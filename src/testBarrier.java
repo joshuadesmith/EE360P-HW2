@@ -1,3 +1,5 @@
+import java.util.concurrent.BrokenBarrierException;
+
 public class testBarrier implements Runnable {
     final static int SIZE = 5;
     final static int ROUND = 5;

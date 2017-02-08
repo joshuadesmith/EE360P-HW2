@@ -32,7 +32,7 @@ public class CyclicBarrier {
      * the last to arrive.
      * @throws InterruptedException
      */
-    public synchronized int await() throws InterruptedException {
+    public int await() throws InterruptedException {
         // Solution without using Java Semaphores
         /*if (Thread.interrupted()) {
             reset();
@@ -50,10 +50,33 @@ public class CyclicBarrier {
         return index;*/
 
         // Solution with Java Semaphores
-        int index = 0;
-
         acquire(indexCheckLock);
 
+        acquire(resetLock);
+        release(resetLock);
+
+        if (count == parties) {
+            acquire(waitLock);
+        }
+
+        int index = --count;
+        if (index != 0) {
+            release(indexCheckLock);
+            acquire(waitLock);
+        } else {
+            acquire(resetLock);
+            count++;
+            release(waitLock);
+            release(indexCheckLock);
+            return 0;
+        }
+
+        count++;
+        if (count == parties) {
+            release(resetLock);
+        }
+
+        release(waitLock);
 
         return index;
     }
@@ -73,19 +96,7 @@ public class CyclicBarrier {
         }
     }
 
-    private void acquire(Semaphore s, int num) {
-        try {
-            s.acquire(num);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-    }
-
     private void release(Semaphore s) {
         s.release();
-    }
-
-    private void release(Semaphore s, int num) {
-        s.release(num);
     }
 }

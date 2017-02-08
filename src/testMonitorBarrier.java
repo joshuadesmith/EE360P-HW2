@@ -26,11 +26,11 @@ public class testMonitorBarrier implements Runnable {
     }
 
     public static void main(String[] args) {
-        CyclicBarrier barrier = new CyclicBarrier(SIZE);
+        MonitorCyclicBarrier barrier = new MonitorCyclicBarrier(SIZE);
         Thread[] t = new Thread[SIZE];
 
         for (int i = 0; i < SIZE; ++i) {
-            t[i] = new Thread(new testBarrier(barrier));
+            t[i] = new Thread(new testMonitorBarrier(barrier));
         }
 
         for (int i = 0; i < SIZE; ++i) {
