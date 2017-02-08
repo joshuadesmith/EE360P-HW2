@@ -7,14 +7,19 @@ import java.util.concurrent.Semaphore; // for implementation using Semaphores
 public class CyclicBarrier {
 
     private int parties;
-    private int currentCount;
+    private int count;
 
-    private Semaphore isFull;
-    private Semaphore incCap;
+    private Semaphore indexCheckLock;
+    private Semaphore waitLock;
+    private Semaphore resetLock;
+
 
     public CyclicBarrier(int parties) {
         this.parties = parties;
-        this.currentCount = parties;
+        this.count = parties;
+        this.indexCheckLock = new Semaphore(1);
+        this.waitLock = new Semaphore(1);
+        this.resetLock = new Semaphore(1);
     }
 
     /**
@@ -28,7 +33,8 @@ public class CyclicBarrier {
      * @throws InterruptedException
      */
     public synchronized int await() throws InterruptedException {
-        if (Thread.interrupted()) {
+        // Solution without using Java Semaphores
+        /*if (Thread.interrupted()) {
             reset();
             throw new InterruptedException();
         }
@@ -41,11 +47,21 @@ public class CyclicBarrier {
             reset();
         }
 
+        return index;*/
+
+        // Solution with Java Semaphores
+        int index = 0;
+
+        acquire(indexCheckLock);
+
+
         return index;
     }
 
     private void reset() {
-        currentCount = parties;
+        acquire(indexCheckLock);
+        count = parties;
+        release(indexCheckLock);
         notifyAll();
     }
 
@@ -57,7 +73,19 @@ public class CyclicBarrier {
         }
     }
 
+    private void acquire(Semaphore s, int num) {
+        try {
+            s.acquire(num);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
     private void release(Semaphore s) {
         s.release();
+    }
+
+    private void release(Semaphore s, int num) {
+        s.release(num);
     }
 }
