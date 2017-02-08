@@ -50,21 +50,23 @@ public class CyclicBarrier {
         return index;*/
 
         // Solution with Java Semaphores
+
         acquire(indexCheckLock);
 
+        // Prevents threads from moving through while in reset phase
         acquire(resetLock);
         release(resetLock);
 
-        if (count == parties) {
+        if (count == parties) {         // First thread into barrier, start wait phase
             acquire(waitLock);
         }
 
         int index = --count;
         if (index != 0) {
             release(indexCheckLock);
-            acquire(waitLock);
+            acquire(waitLock);          // Add to queue of waiting threads
         } else {
-            acquire(resetLock);
+            acquire(resetLock);         // First thread to be released, start reset phase
             count++;
             release(waitLock);
             release(indexCheckLock);
@@ -81,13 +83,8 @@ public class CyclicBarrier {
         return index;
     }
 
-    private void reset() {
-        acquire(indexCheckLock);
-        count = parties;
-        release(indexCheckLock);
-        notifyAll();
-    }
 
+    // Helper methods to clean things up
     private void acquire(Semaphore s) {
         try {
             s.acquire();
