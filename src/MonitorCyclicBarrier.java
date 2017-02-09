@@ -6,18 +6,21 @@ public class MonitorCyclicBarrier {
     private int parties;
     private int count;
 
-    private final Object indexMonitor;
-
     public MonitorCyclicBarrier(int parties) {
         this.parties = parties;
         this.count = parties;
-        this.indexMonitor = new Object();
     }
 
-    public int await() throws InterruptedException {
-        synchronized (indexMonitor) {
+    public synchronized int await() throws InterruptedException {
+        int index = --count;
 
+        if (index > 0) {
+            this.wait();
+        } else {
+            count = parties;
+            notifyAll();
         }
-        return 0;
+
+        return index;
     }
 }
