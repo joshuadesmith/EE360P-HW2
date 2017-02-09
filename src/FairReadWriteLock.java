@@ -3,14 +3,13 @@
  */
 public class FairReadWriteLock {
 
-    private int numReaders = 0;
-    private int numWaiting = 0;
+    private int numReaders = 0;     // Tracks number of threads reading
+    private int numWaitingToWrite = 0;     // Tracks number of threads waiting to write
 
     private boolean writeInProgress = false;
-    private boolean readEnable = false;
 
     public synchronized void beginRead() throws InterruptedException {
-        while (writeInProgress || (numWaiting > 0 && !readEnable)) {
+        while (writeInProgress || numWaitingToWrite > 0) {
             wait();
         }
         numReaders++;
@@ -18,25 +17,23 @@ public class FairReadWriteLock {
 
     public synchronized void endRead() {
         numReaders--;
-        readEnable = false;
         if (numReaders == 0) {
             notifyAll();
         }
     }
 
     public synchronized void beginWrite() throws InterruptedException {
-        numWaiting++;
+        numWaitingToWrite++;
         while (numReaders > 0 || writeInProgress) {
             wait();
         }
 
-        numWaiting--;
+        numWaitingToWrite--;
         writeInProgress = true;
     }
 
     public synchronized void endWrite() {
         writeInProgress = false;
-        readEnable = true;
         notifyAll();
     }
 
