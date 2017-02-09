@@ -1,4 +1,5 @@
-
+// EID1 = jds5228
+// EID2 =
 
 
 public class MonitorCyclicBarrier {
@@ -15,12 +16,12 @@ public class MonitorCyclicBarrier {
         int index = --count;
 
         if (index > 0) {
-            this.wait();
+            this.wait();        // Wait for all parties
         } else {
-            count = parties;
-            notifyAll();
+            count = parties;    // Reset count to wait for parties again
+            notifyAll();        // Wake up waiting threads
         }
 
-        return index;
+        return index;           // First to arrive returns parties-1; last returns 0
     }
 }

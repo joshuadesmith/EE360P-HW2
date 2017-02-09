@@ -11,15 +11,12 @@ public class CyclicBarrier {
 
     private Semaphore indexCheckLock;
     private Semaphore waitLock;
-    private Semaphore resetLock;
-
 
     public CyclicBarrier(int parties) {
         this.parties = parties;
         this.count = parties;
         this.indexCheckLock = new Semaphore(1);
         this.waitLock = new Semaphore(1);
-        this.resetLock = new Semaphore(1);
     }
 
     /**
@@ -33,52 +30,24 @@ public class CyclicBarrier {
      * @throws InterruptedException
      */
     public int await() throws InterruptedException {
-        // Solution without using Java Semaphores
-        /*if (Thread.interrupted()) {
-            reset();
-            throw new InterruptedException();
-        }
-
-        int index = --currentCount;
-
-        if (index > 0) {
-            wait();
-        } else {
-            reset();
-        }
-
-        return index;*/
-
-        // Solution with Java Semaphores
+        int index;
 
         acquire(indexCheckLock);
 
-        // Prevents threads from moving through while in reset phase
-        acquire(resetLock);
-        release(resetLock);
-
-        if (count == parties) {         // First thread into barrier, start wait phase
+        if (count == parties) {         //First to arrive sets up a block
             acquire(waitLock);
         }
 
-        int index = --count;
-        if (index != 0) {
-            release(indexCheckLock);
-            acquire(waitLock);          // Add to queue of waiting threads
-        } else {
-            acquire(resetLock);         // First thread to be released, start reset phase
-            count++;
-            release(waitLock);
-            release(indexCheckLock);
-            return 0;
+        index = --count;                //Update count and get index
+
+        if (index > 0) {
+            release(indexCheckLock);    //Allow other threads to update count
+            acquire(waitLock);          //Block until all parties arrive
         }
 
-        count++;
-        if (count == parties) {
-            release(resetLock);
-        }
-
-        release(waitLock);
+        release(waitLock);              //First thread through releases block
+        count = parties;                //Reset the count
+        release(indexCheckLock);        //Allow more threads to enter barrier
 
         return index;
     }
