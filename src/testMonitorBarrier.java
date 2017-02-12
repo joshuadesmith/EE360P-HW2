@@ -2,8 +2,8 @@
  * Created by joshuasmith on 2/7/17.
  */
 public class testMonitorBarrier implements Runnable {
-    final static int SIZE = 5;
-    final static int ROUND = 5;
+    final static int SIZE = 8;
+    final static int ROUND = 8;
 
     final MonitorCyclicBarrier barrier;
 
