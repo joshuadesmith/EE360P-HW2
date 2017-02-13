@@ -4,9 +4,11 @@
 public class Writer implements Runnable {
 
     static FairReadWriteLock rwLock;
+    private int UUID;
 
-    public Writer(FairReadWriteLock rwLock) {
+    public Writer(FairReadWriteLock rwLock, int UUID) {
         this.rwLock = rwLock;
+        this.UUID = UUID;
     }
 
     public void run() {
@@ -20,6 +22,10 @@ public class Writer implements Runnable {
     }
 
     private void write() {
-        System.out.println("A Thread is writing.");
+        System.out.println("Writer " + UUID + " is writing.");
+    }
+
+    public int getID() {
+        return UUID;
     }
 }
