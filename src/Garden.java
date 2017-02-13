@@ -1,3 +1,4 @@
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -14,11 +15,24 @@ public class Garden {
     private static final int UNSEEDED = 0;
     private static final int SEEDED = 1;
     private static final int FILLED = 2;
-    private static int[] holeCount;
-
-
+    private static AtomicInteger[] holeCount;
 
     private static boolean shovelFree;
+
+    // Lock that makes sure Newton and Mary can't have the shovel at the same time
+    private static final ReentrantLock gardenLock = new ReentrantLock();
+
+    // Conditions required for Newton to dig
+    private static final Condition lessThan4Unseeded = gardenLock.newCondition();
+    private static final Condition lessThan8Unfilled = gardenLock.newCondition();
+    private static final Condition lessThanMaxEmpty = gardenLock.newCondition();
+    private static final Condition shovelIsFree = gardenLock.newCondition();
+
+    // Conditions required for Benjamin to seed
+    private static final Condition atLeast1Unseeded = gardenLock.newCondition();
+
+    // Conditions required for Mary to fill
+    private static final Condition atLeast1Seeded = gardenLock.newCondition();
 
 
     /**
@@ -26,7 +40,11 @@ public class Garden {
      */
     public Garden() {
         shovelFree = true;
-        holeCount = new int[3];
+        holeCount = new AtomicInteger[3];
+
+        for (int i = 0; i < holeCount.length; i++) {
+            holeCount[i] = new AtomicInteger();
+        }
     }
 
     /**
@@ -36,13 +54,24 @@ public class Garden {
     public void startDigging() {
         System.out.println("Newton wants to dig a hole.");
 
-        try {
+        gardenLock.lock();
+        System.out.println("Newton now has the shovel");
 
+        try {
+            while (holeCount[UNSEEDED].get() >= 4) { lessThan4Unseeded.await(); }
+            while (holeCount[UNSEEDED].get() + holeCount[SEEDED].get() >= 8) { lessThan8Unfilled.await(); }
+            //while ((holeCount[UNSEEDED].get() >= 4) || (holeCount[UNSEEDED].get() + holeCount[SEEDED].get() >= 8)) {
+            //    lessThanMaxEmpty.await();
+            //}
+            while (!shovelFree) { shovelIsFree.await(); }
         } catch (Exception e) {
             e.printStackTrace();
-        } finally {
-
         }
+
+        shovelFree = false;
+        System.out.println("Newton is now digging.");
+
+        gardenLock.unlock();
     }
 
     /**
@@ -52,21 +81,33 @@ public class Garden {
      * canSeed Condition is signalled.
      */
     public void doneDigging() {
+        gardenLock.lock();
 
+        holeCount[UNSEEDED].incrementAndGet();
+        atLeast1Unseeded.signal();
+        shovelFree = true;
+        shovelIsFree.signal();
+        System.out.println("Newton finished digging.");
+        System.out.println("Newton no longer has the shovel");
+
+        gardenLock.unlock();
     }
 
     /**
      * Called when Benjamin wants to seed a hole.
      */
     public void startSeeding() {
-
         System.out.println("Benjamin wants to seed a hole.");
-        try {
+        gardenLock.lock();
 
+        try {
+            while (holeCount[UNSEEDED].get() < 1) { atLeast1Unseeded.await(); }
         } catch (Exception e) {
             e.printStackTrace();
-        } finally {
         }
+
+        System.out.println("Benjamin is now seeding");
+        gardenLock.unlock();
     }
 
     /**
@@ -76,7 +117,15 @@ public class Garden {
      * canFill Condition is signalled.
      */
     public void doneSeeding() {
+        gardenLock.lock();
 
+        holeCount[UNSEEDED].decrementAndGet();
+        holeCount[SEEDED].incrementAndGet();
+        atLeast1Seeded.signal();
+        lessThan4Unseeded.signal();
+        System.out.println("Benjamin finished seeding.");
+
+        gardenLock.unlock();
     }
 
     /**
@@ -84,14 +133,20 @@ public class Garden {
      * Shovel is no longer free.
      */
     public void startFilling() {
+        gardenLock.lock();
         System.out.println("Mary wants to fill a hole.");
-        try {
 
+        try {
+            while (holeCount[SEEDED].get() < 1) { atLeast1Seeded.await(); }
+            while (!shovelFree) { shovelIsFree.await(); }
         } catch (Exception e) {
             e.printStackTrace();
-        } finally {
         }
 
+        shovelFree = false;
+        System.out.println("Mary has the shovel.");
+        System.out.println("Mary is now filling");
+        gardenLock.unlock();
     }
 
     /**
@@ -102,7 +157,16 @@ public class Garden {
      * canDig and canSeed Conditions notified.
      */
     public void doneFilling() {
+        gardenLock.lock();
+        holeCount[SEEDED].decrementAndGet();
+        holeCount[FILLED].incrementAndGet();
+        lessThan8Unfilled.signal();
+        shovelFree = true;
+        shovelIsFree.signal();
 
+        System.out.println("Mary finished filling.");
+        System.out.println("Mary no longer has the shovel.");
+        gardenLock.unlock();
     }
 
     /*
@@ -116,7 +180,7 @@ public class Garden {
      * @return  Number of holes dug
      */
     public int totalHolesDugByNewton() {
-        int total = holeCount[UNSEEDED] + holeCount[SEEDED] + holeCount[FILLED];
+        int total = holeCount[UNSEEDED].get() + holeCount[SEEDED].get() + holeCount[FILLED].get();
         return total;
     }
 
@@ -125,7 +189,7 @@ public class Garden {
      * @return  Number of holes seeded
      */
     public int totalHolesSeededByBenjamin() {
-        int total = holeCount[SEEDED] + holeCount[FILLED];
+        int total = holeCount[SEEDED].get() + holeCount[FILLED].get();
         return total;
     }
 
@@ -133,7 +197,7 @@ public class Garden {
      * @return  Number of holes filled
      */
     public int totalHolesFilledByMary() {
-        int total = holeCount[FILLED];
+        int total = holeCount[FILLED].get();
         return total;
     }
 
@@ -146,17 +210,17 @@ public class Garden {
      */
     private boolean canDig() {
         // Check number of unseeded holes
-        if (holeCount[UNSEEDED] >= 4) {
+        if (holeCount[UNSEEDED].get() >= 4) {
             return false;
         }
 
         // Check number of unfilled holes
-        if ((holeCount[UNSEEDED] + holeCount[SEEDED]) >= 8) {
+        if ((holeCount[UNSEEDED].get() + holeCount[SEEDED].get()) >= 8) {
             return false;
         }
 
         // If proper number of unfilled/unseed holes, check if shovel is free.
-        return shovelFree;
+        return true;
     }
 
     /**
@@ -165,7 +229,7 @@ public class Garden {
      * @return
      */
     private boolean canSeed() {
-        return (holeCount[UNSEEDED] >= 0);
+        return (holeCount[UNSEEDED].get() >= 0);
     }
 
     /**
@@ -175,10 +239,10 @@ public class Garden {
      * @return
      */
     private boolean canFIll() {
-        if (holeCount[SEEDED] <= 0) {
+        if (holeCount[SEEDED].get() <= 0) {
             return false;
         } else {
-            return shovelFree;
+            return true;
         }
     }
 }
