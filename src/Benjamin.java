@@ -22,6 +22,8 @@ public class Benjamin implements Runnable {
             seed();
             garden.doneSeeding();
         }
+
+        System.out.println("Done seeding. Seeded" + count + " holes.");
     }
 
     public void seed() {

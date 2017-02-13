@@ -19,6 +19,8 @@ public class Newton implements Runnable {
             dig();
             garden.doneDigging();
         }
+
+        System.out.println("Done digging. Dug" + count + " holes.");
     }
 
     private void dig() {

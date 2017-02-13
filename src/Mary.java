@@ -22,6 +22,8 @@ public class Mary implements Runnable {
             fill();
             garden.doneFilling();
         }
+
+        System.out.println("Done filling. Filled" + count + " holes.");
     }
 
     public void fill() {
