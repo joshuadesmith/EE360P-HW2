@@ -9,14 +9,13 @@ public class CyclicBarrier {
     private int parties;
     private int count;
 
-    private Semaphore indexCheckLock;
-    private Semaphore waitLock;
+    Semaphore barrier = new Semaphore(0);
+    Semaphore barrier2= new Semaphore(1);
+    Semaphore mutex = new Semaphore(1);
 
     public CyclicBarrier(int parties) {
         this.parties = parties;
-        this.count = parties;
-        this.indexCheckLock = new Semaphore(1);
-        this.waitLock = new Semaphore(1);
+        this.count = 0;
     }
 
     /**
@@ -30,30 +29,37 @@ public class CyclicBarrier {
      * @throws InterruptedException
      */
     public int await() throws InterruptedException {
-        int index;
-
-        acquire(indexCheckLock);
-
-        if (count == parties) {         //First to arrive sets up a block
-            acquire(waitLock);
+        mutex.acquire();
+        count++;
+        int index = this.parties - this.count;
+        if(count == parties){   //awaits for the last thread
+            barrier.release();
+            barrier2.acquire();
         }
+        mutex.release();
 
-        index = --count;                //Update count and get index
 
-        if (index > 0) {
-            release(indexCheckLock);    //Allow other threads to update count
-            acquire(waitLock);          //Block until all parties arrive
+        barrier.acquire();      //await for all threads to get here
+        barrier.release();      //resume execution
+
+
+        mutex.acquire();
+        count--;
+        if(count == 0){	        //awaits for the last thread
+            barrier2.release();
+            barrier.acquire();  //relock the barrier for the next set of threads
         }
+        mutex.release();
 
-        release(waitLock);              //First thread through releases block
-        count = parties;                //Reset the count
-        release(indexCheckLock);        //Allow more threads to enter barrier
 
+        barrier2.acquire();
+        barrier2.release();
         return index;
     }
 
 
     // Helper methods to clean things up
+    // Didn't end up using these
     private void acquire(Semaphore s) {
         try {
             s.acquire();
