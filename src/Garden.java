@@ -23,8 +23,8 @@ public class Garden {
     private static final ReentrantLock gardenLock = new ReentrantLock();
 
     // Conditions required for Newton to dig
-    private static final Condition lessThan4Unseeded = gardenLock.newCondition();
-    private static final Condition lessThan8Unfilled = gardenLock.newCondition();
+    //private static final Condition lessThan4Unseeded = gardenLock.newCondition(); // combined these two into one
+    //private static final Condition lessThan8Unfilled = gardenLock.newCondition();
     private static final Condition lessThanMaxEmpty = gardenLock.newCondition();
     private static final Condition shovelIsFree = gardenLock.newCondition();
 
@@ -52,24 +52,20 @@ public class Garden {
      * Shovel is no longer free if he starts.
      */
     public void startDigging() {
-        System.out.println("Newton wants to dig a hole.");
-
         gardenLock.lock();
-        System.out.println("Newton now has the shovel");
 
         try {
-            while (holeCount[UNSEEDED].get() >= 4) { lessThan4Unseeded.await(); }
-            while (holeCount[UNSEEDED].get() + holeCount[SEEDED].get() >= 8) { lessThan8Unfilled.await(); }
-            //while ((holeCount[UNSEEDED].get() >= 4) || (holeCount[UNSEEDED].get() + holeCount[SEEDED].get() >= 8)) {
-            //    lessThanMaxEmpty.await();
-            //}
+            while ((holeCount[UNSEEDED].get() >= 4) || (holeCount[UNSEEDED].get() + holeCount[SEEDED].get() >= 8)) {
+                lessThanMaxEmpty.await();
+            }
             while (!shovelFree) { shovelIsFree.await(); }
         } catch (Exception e) {
             e.printStackTrace();
         }
 
         shovelFree = false;
-        System.out.println("Newton is now digging.");
+        System.out.println("Newton now has the shovel");
+        System.out.println("Newton started digging.");
 
         gardenLock.unlock();
     }
@@ -97,7 +93,6 @@ public class Garden {
      * Called when Benjamin wants to seed a hole.
      */
     public void startSeeding() {
-        System.out.println("Benjamin wants to seed a hole.");
         gardenLock.lock();
 
         try {
@@ -122,7 +117,7 @@ public class Garden {
         holeCount[UNSEEDED].decrementAndGet();
         holeCount[SEEDED].incrementAndGet();
         atLeast1Seeded.signal();
-        lessThan4Unseeded.signal();
+        lessThanMaxEmpty.signal();
         System.out.println("Benjamin finished seeding.");
 
         gardenLock.unlock();
@@ -134,7 +129,6 @@ public class Garden {
      */
     public void startFilling() {
         gardenLock.lock();
-        System.out.println("Mary wants to fill a hole.");
 
         try {
             while (holeCount[SEEDED].get() < 1) { atLeast1Seeded.await(); }
@@ -145,7 +139,7 @@ public class Garden {
 
         shovelFree = false;
         System.out.println("Mary has the shovel.");
-        System.out.println("Mary is now filling");
+        System.out.println("Mary started filling");
         gardenLock.unlock();
     }
 
@@ -160,7 +154,7 @@ public class Garden {
         gardenLock.lock();
         holeCount[SEEDED].decrementAndGet();
         holeCount[FILLED].incrementAndGet();
-        lessThan8Unfilled.signal();
+        lessThanMaxEmpty.signal();
         shovelFree = true;
         shovelIsFree.signal();
 
