@@ -16,20 +16,10 @@ public class Garden {
     private static final int FILLED = 2;
     private static int[] holeCount;
 
-    private static int holesDug, holesSeeded, holesFilled;
 
-    private final ReentrantLock updateLock = new ReentrantLock();
-    private final ReentrantLock shovelLock = new ReentrantLock();
-    private final ReentrantLock seedLock = new ReentrantLock();
 
-    private final Condition notTooManyUnseeded = shovelLock.newCondition();
-    private final Condition notTooManyUnfilled = shovelLock.newCondition();
-    private final Condition atLeastOneSeeded = shovelLock.newCondition();
-    private final Condition newtonHasShovel = shovelLock.newCondition();
-    private final Condition maryHasShovel = shovelLock.newCondition();
     private static boolean shovelFree;
 
-    private final Condition atLeastOneUnseeded = seedLock.newCondition();
 
     /**
      * Constructor
@@ -37,7 +27,6 @@ public class Garden {
     public Garden() {
         shovelFree = true;
         holeCount = new int[3];
-        holesDug = holesSeeded = holesFilled = 0;
     }
 
     /**
@@ -46,18 +35,13 @@ public class Garden {
      */
     public void startDigging() {
         System.out.println("Newton wants to dig a hole.");
-        shovelLock.lock();
 
         try {
-            while (holeCount[UNSEEDED] >= 4) { notTooManyUnseeded.await(); }
-            while (holeCount[UNSEEDED] + holeCount[SEEDED] >= 8) { notTooManyUnfilled.await(); }
-            while (!shovelFree) { newtonHasShovel.await(); }
 
-            shovelFree = false;
         } catch (Exception e) {
             e.printStackTrace();
         } finally {
-            //updateLock.unlock();
+
         }
     }
 
@@ -68,27 +52,17 @@ public class Garden {
      * canSeed Condition is signalled.
      */
     public void doneDigging() {
-        updateLock.lock();
 
-        holeCount[UNSEEDED]++;
-        holesDug++;
-        shovelFree = true;
-        System.out.println("Newton dug a hole");
-        atLeastOneUnseeded.signal();
-        maryHasShovel.signal();
-
-        updateLock.unlock();
-        shovelLock.unlock();
     }
 
     /**
      * Called when Benjamin wants to seed a hole.
      */
     public void startSeeding() {
-        seedLock.lock();
+
         System.out.println("Benjamin wants to seed a hole.");
         try {
-            while (holeCount[UNSEEDED] <= 0) { atLeastOneUnseeded.await(); }
+
         } catch (Exception e) {
             e.printStackTrace();
         } finally {
@@ -102,16 +76,7 @@ public class Garden {
      * canFill Condition is signalled.
      */
     public void doneSeeding() {
-        updateLock.lock();
 
-        holeCount[UNSEEDED]--;
-        holeCount[SEEDED]++;
-        holesSeeded++;
-        System.out.println("Benjamin seeded a hole.");
-        atLeastOneSeeded.signalAll();
-
-        updateLock.unlock();
-        seedLock.unlock();
     }
 
     /**
@@ -120,12 +85,8 @@ public class Garden {
      */
     public void startFilling() {
         System.out.println("Mary wants to fill a hole.");
-        shovelLock.lock();
         try {
-            while (holeCount[SEEDED] <= 0) { atLeastOneSeeded.await(); }
-            while (!shovelFree) { maryHasShovel.await(); }
 
-            shovelFree = false;
         } catch (Exception e) {
             e.printStackTrace();
         } finally {
@@ -141,18 +102,7 @@ public class Garden {
      * canDig and canSeed Conditions notified.
      */
     public void doneFilling() {
-        updateLock.lock();
 
-        holeCount[SEEDED]--;
-        holeCount[FILLED]++;
-        holesFilled++;
-        shovelFree = true;
-        System.out.println("Mary filled a hole.");
-        notTooManyUnfilled.signalAll();
-        newtonHasShovel.signalAll();
-
-        updateLock.unlock();
-        shovelLock.unlock();
     }
 
     /*
