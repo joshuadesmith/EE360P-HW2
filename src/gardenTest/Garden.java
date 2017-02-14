@@ -66,8 +66,8 @@ public class Garden {
         }
 
         shovelFree = false;
-        System.out.println("gardenTest.Newton now has the shovel");
-        System.out.println("gardenTest.Newton started digging.");
+        //System.out.println("gardenTest.Newton now has the shovel");
+        //System.out.println("gardenTest.Newton started digging.");
 
         gardenLock.unlock();
     }
@@ -85,8 +85,8 @@ public class Garden {
         atLeast1Unseeded.signal();
         shovelFree = true;
         shovelIsFree.signal();
-        System.out.println("gardenTest.Newton finished digging.");
-        System.out.println("gardenTest.Newton no longer has the shovel");
+        //System.out.println("gardenTest.Newton finished digging.");
+        //System.out.println("gardenTest.Newton no longer has the shovel");
 
         gardenLock.unlock();
     }
@@ -120,7 +120,7 @@ public class Garden {
         holeCount[SEEDED].incrementAndGet();
         atLeast1Seeded.signal();
         lessThanMaxEmpty.signal();
-        System.out.println("gardenTest.Benjamin finished seeding.");
+        //System.out.println("gardenTest.Benjamin finished seeding.");
 
         gardenLock.unlock();
     }
@@ -140,8 +140,8 @@ public class Garden {
         }
 
         shovelFree = false;
-        System.out.println("gardenTest.Mary has the shovel.");
-        System.out.println("gardenTest.Mary started filling");
+        //System.out.println("gardenTest.Mary has the shovel.");
+        //System.out.println("gardenTest.Mary started filling");
         gardenLock.unlock();
     }
 
@@ -160,8 +160,8 @@ public class Garden {
         shovelFree = true;
         shovelIsFree.signal();
 
-        System.out.println("gardenTest.Mary finished filling.");
-        System.out.println("gardenTest.Mary no longer has the shovel.");
+        //System.out.println("gardenTest.Mary finished filling.");
+        //System.out.println("gardenTest.Mary no longer has the shovel.");
         gardenLock.unlock();
     }
 
