@@ -1,12 +1,14 @@
 package gardenTest;
+/*
+ * EID's of group members:
+ * TK8375
+ * JDS5228
+ */
 
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
-/**
- * Created by joshuasmith on 2/8/17.
- */
 public class Garden {
 
     /**

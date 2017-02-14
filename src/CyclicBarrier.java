@@ -1,6 +1,7 @@
 /*
- * Joshua Smith - jds5228
- * Taewhan Ko -
+ * EID's of group members:
+ * TK8375
+ * JDS5228
  */
 import java.util.concurrent.Semaphore; // for implementation using Semaphores
 

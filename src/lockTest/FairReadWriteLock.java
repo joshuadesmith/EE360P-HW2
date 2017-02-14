@@ -1,9 +1,9 @@
 package lockTest;
 
 /*
- * EID's of group members
+ * EID's of group members:
  * TK8375
- *
+ * JDS5228
  */
 public class FairReadWriteLock {
     private int current = 0;

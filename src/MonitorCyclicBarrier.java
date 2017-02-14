@@ -1,6 +1,8 @@
-// EID1 = jds5228
-// EID2 =
-
+/*
+ * EID's of group members:
+ * TK8375
+ * JDS5228
+ */
 
 public class MonitorCyclicBarrier {
 
