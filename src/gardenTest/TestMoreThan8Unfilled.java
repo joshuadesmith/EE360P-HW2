@@ -22,14 +22,15 @@ public class TestMoreThan8Unfilled extends MultithreadedTestCase {
             RunGardenTest.garden.startDigging();
             RunGardenTest.garden.doneDigging();
         }
+        // Now 4 unseeded, 4 seeded
 
         waitForTick(4);
 
         // Now try to dig another hole - should block until hole is filled
-        int unfilled = RunGardenTest.garden.totalHolesDugByNewton() - RunGardenTest.garden.totalHolesFilledByMary();
-        System.out.println("There are " + unfilled + " unfilled holes*****************");
+        //int unfilled = RunGardenTest.garden.totalHolesDugByNewton() - RunGardenTest.garden.totalHolesFilledByMary();
+        //System.out.println("There are " + unfilled + " unfilled holes*****************");
         RunGardenTest.garden.startDigging();
-        assertTick(5);
+        assertTick(6);
         RunGardenTest.garden.doneDigging();
     }
 
@@ -42,15 +43,24 @@ public class TestMoreThan8Unfilled extends MultithreadedTestCase {
             RunGardenTest.garden.startSeeding();
             RunGardenTest.garden.doneSeeding();
         }
+        // Now 0 unseeded, 4 seeded
 
         waitForTick(3);
         RunGardenTest.garden.startSeeding();
         RunGardenTest.garden.doneSeeding();
+        // Now 3 unseeded, 5 seeded
+
+        waitForTick(5);
+        RunGardenTest.garden.startSeeding();
+        RunGardenTest.garden.doneSeeding();
+        // Now 2 unseeded, 6 seeded
     }
 
     public void thread3() throws InterruptedException {
-        waitForTick(5);
+        waitForTick(6);
         RunGardenTest.garden.startFilling();
         RunGardenTest.garden.doneFilling();
+        // Now 2 unseeded, 5 seeded
+
     }
 }

@@ -10,7 +10,8 @@ public class RunGardenTest {
 
     public static void main(String[] args) throws Throwable {
         //TestFramework.runOnce(new Test4Unseeded());
-        TestFramework.runOnce(new TestMoreThan8Unfilled());
+        //TestFramework.runOnce(new TestMoreThan8Unfilled());
+        TestFramework.runOnce(new TestNoUnseeded());
 
     }
 }
