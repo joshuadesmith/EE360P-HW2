@@ -28,10 +28,6 @@ public class FairReadWriteLock {
     private int numReaders = 0;                 // Tracks number of threads reading
     private int numWaitingToWrite = 0;          // Tracks number of threads waiting to write
     private boolean writeInProgress = false;    // Determines whether a thread is writing
-    private static final Queue<ThreadStamp> readWaitlist = new LinkedList<ThreadStamp>(); // for keeping order
-    private static final Queue<ThreadStamp> writeWaitlist = new LinkedList<ThreadStamp>();// for keeping order
-    public final String read = "read";
-    public final String write = "write";
 
     /**
      * Wrapper class to handle storing Thread timestamps
@@ -103,11 +99,5 @@ public class FairReadWriteLock {
         notifyAll();
     }
 
-    public boolean writeNextInLine() {
-        if (writeWaitlist.isEmpty()) { return false; }
-        if (readWaitlist.isEmpty()) { return true; }
-
-        return (readWaitlist.peek().time > writeWaitlist.peek().time);
-    }
 
 }
