@@ -1,3 +1,5 @@
+package gardenTest;
+
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
@@ -19,19 +21,19 @@ public class Garden {
 
     private static boolean shovelFree;
 
-    // Lock that makes sure Newton and Mary can't have the shovel at the same time
+    // Lock that makes sure gardenTest.Newton and gardenTest.Mary can't have the shovel at the same time
     private static final ReentrantLock gardenLock = new ReentrantLock();
 
-    // Conditions required for Newton to dig
+    // Conditions required for gardenTest.Newton to dig
     //private static final Condition lessThan4Unseeded = gardenLock.newCondition(); // combined these two into one
     //private static final Condition lessThan8Unfilled = gardenLock.newCondition();
     private static final Condition lessThanMaxEmpty = gardenLock.newCondition();
     private static final Condition shovelIsFree = gardenLock.newCondition();
 
-    // Conditions required for Benjamin to seed
+    // Conditions required for gardenTest.Benjamin to seed
     private static final Condition atLeast1Unseeded = gardenLock.newCondition();
 
-    // Conditions required for Mary to fill
+    // Conditions required for gardenTest.Mary to fill
     private static final Condition atLeast1Seeded = gardenLock.newCondition();
 
 
@@ -48,7 +50,7 @@ public class Garden {
     }
 
     /**
-     * Called when Newton wants to dig a hole.
+     * Called when gardenTest.Newton wants to dig a hole.
      * Shovel is no longer free if he starts.
      */
     public void startDigging() {
@@ -64,14 +66,14 @@ public class Garden {
         }
 
         shovelFree = false;
-        System.out.println("Newton now has the shovel");
-        System.out.println("Newton started digging.");
+        System.out.println("gardenTest.Newton now has the shovel");
+        System.out.println("gardenTest.Newton started digging.");
 
         gardenLock.unlock();
     }
 
     /**
-     * Called when Newton is done digging a hole.
+     * Called when gardenTest.Newton is done digging a hole.
      * Number of UNSEEDED holes incremented.
      * Shovel is now free.
      * canSeed Condition is signalled.
@@ -83,14 +85,14 @@ public class Garden {
         atLeast1Unseeded.signal();
         shovelFree = true;
         shovelIsFree.signal();
-        System.out.println("Newton finished digging.");
-        System.out.println("Newton no longer has the shovel");
+        System.out.println("gardenTest.Newton finished digging.");
+        System.out.println("gardenTest.Newton no longer has the shovel");
 
         gardenLock.unlock();
     }
 
     /**
-     * Called when Benjamin wants to seed a hole.
+     * Called when gardenTest.Benjamin wants to seed a hole.
      */
     public void startSeeding() {
         gardenLock.lock();
@@ -101,12 +103,12 @@ public class Garden {
             e.printStackTrace();
         }
 
-        System.out.println("Benjamin is now seeding");
+        System.out.println("gardenTest.Benjamin is now seeding");
         gardenLock.unlock();
     }
 
     /**
-     * Called when Benjamin is done seeding the hole.
+     * Called when gardenTest.Benjamin is done seeding the hole.
      * Number of UNSEEDED holes is decremented.
      * Number of SEEDED holes is incremented.
      * canFill Condition is signalled.
@@ -118,13 +120,13 @@ public class Garden {
         holeCount[SEEDED].incrementAndGet();
         atLeast1Seeded.signal();
         lessThanMaxEmpty.signal();
-        System.out.println("Benjamin finished seeding.");
+        System.out.println("gardenTest.Benjamin finished seeding.");
 
         gardenLock.unlock();
     }
 
     /**
-     * Called when Mary starts filling a hole.
+     * Called when gardenTest.Mary starts filling a hole.
      * Shovel is no longer free.
      */
     public void startFilling() {
@@ -138,13 +140,13 @@ public class Garden {
         }
 
         shovelFree = false;
-        System.out.println("Mary has the shovel.");
-        System.out.println("Mary started filling");
+        System.out.println("gardenTest.Mary has the shovel.");
+        System.out.println("gardenTest.Mary started filling");
         gardenLock.unlock();
     }
 
     /**
-     * Called when Mary finishes filling a hole.
+     * Called when gardenTest.Mary finishes filling a hole.
      * Number of SEEDED holes is decremented.
      * Number of FILLED holes is incremented.
      * Shovel is now free.
@@ -158,14 +160,14 @@ public class Garden {
         shovelFree = true;
         shovelIsFree.signal();
 
-        System.out.println("Mary finished filling.");
-        System.out.println("Mary no longer has the shovel.");
+        System.out.println("gardenTest.Mary finished filling.");
+        System.out.println("gardenTest.Mary no longer has the shovel.");
         gardenLock.unlock();
     }
 
     /*
     * The following methods return the total number of holes dug, seeded or
-    * filled by Newton, Benjamin or Mary at the time the methods' are
+    * filled by gardenTest.Newton, gardenTest.Benjamin or gardenTest.Mary at the time the methods' are
     * invoked on the garden class. */
 
     /**
@@ -196,10 +198,10 @@ public class Garden {
     }
 
     /**
-     * Determines whether Newton can currently dig a hole.
-     * Newton has to wait for Benjamin if there are 4 holes that are UNSEEDED.
-     * He also has to wait for Mary if there are 8 unfilled holes.
-     * Newton cannot dig a hole if the shovel is not free.
+     * Determines whether gardenTest.Newton can currently dig a hole.
+     * gardenTest.Newton has to wait for gardenTest.Benjamin if there are 4 holes that are UNSEEDED.
+     * He also has to wait for gardenTest.Mary if there are 8 unfilled holes.
+     * gardenTest.Newton cannot dig a hole if the shovel is not free.
      * @return
      */
     private boolean canDig() {
@@ -218,8 +220,8 @@ public class Garden {
     }
 
     /**
-     * Determines whether Benjamin can currently seed a hole.
-     * Benjamin cannot plant a seed unless at least one UNSEEDED hole exists.
+     * Determines whether gardenTest.Benjamin can currently seed a hole.
+     * gardenTest.Benjamin cannot plant a seed unless at least one UNSEEDED hole exists.
      * @return
      */
     private boolean canSeed() {
@@ -227,9 +229,9 @@ public class Garden {
     }
 
     /**
-     * Determines whether Mary can currently fill a hole.
-     * Mary cannot fill a hole unless at least one hole that has been SEEDED.
-     * Mary cannot fill a hole if the shovel is not free.
+     * Determines whether gardenTest.Mary can currently fill a hole.
+     * gardenTest.Mary cannot fill a hole unless at least one hole that has been SEEDED.
+     * gardenTest.Mary cannot fill a hole if the shovel is not free.
      * @return
      */
     private boolean canFIll() {

@@ -1,16 +1,18 @@
+package gardenTest;
+
 /**
  * Created by joshuasmith on 2/12/17.
  */
-public class Benjamin implements Runnable {
+public class Mary implements Runnable {
     private static int count;
     private static int max;
     private static Garden garden;
 
-    public int getSeeded() {
+    public int getFilled() {
         return count;
     }
 
-    public Benjamin(Garden g, int m) {
+    public Mary(Garden g, int m) {
         count = 0;
         max = m;
         garden = g;
@@ -18,15 +20,15 @@ public class Benjamin implements Runnable {
 
     public void run() {
         while (count < max) {
-            garden.startSeeding();
-            seed();
-            garden.doneSeeding();
+            garden.startFilling();
+            fill();
+            garden.doneFilling();
         }
 
-        System.out.println("Done seeding. Seeded" + count + " holes.");
+        System.out.println("Done filling. Filled" + count + " holes.");
     }
 
-    public void seed() {
+    public void fill() {
         count++;
     }
 }

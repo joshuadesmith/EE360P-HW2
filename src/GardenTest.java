@@ -1,3 +1,8 @@
+import gardenTest.Benjamin;
+import gardenTest.Garden;
+import gardenTest.Mary;
+import gardenTest.Newton;
+
 /**
  * Created by joshuasmith on 2/12/17.
  */
