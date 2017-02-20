@@ -1,11 +1,10 @@
-package datagram;
+package udpExample;
 
 import java.io.IOException;
-import java.net.DatagramSocket;
 
 /**
  * Created by joshuasmith on 2/20/17.
- * Basic datagram echo server
+ * Basic udpExample echo server
  */
 public class DatagramServer {
 

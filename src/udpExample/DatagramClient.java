@@ -1,4 +1,4 @@
-package datagram;
+package udpExample;
 
 import java.io.IOException;
 import java.net.*;

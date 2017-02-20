@@ -1,4 +1,4 @@
-package datagram;
+package udpExample;
 
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
@@ -6,7 +6,6 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
-import java.nio.file.Paths;
 import java.util.Date;
 
 /**
@@ -15,7 +14,7 @@ import java.util.Date;
 public class DatagramServerThread extends Thread {
 
     public final int DEFAULT_PORT = 2018;
-    public String FILE_PATH = "text.txt";
+    public String FILE_PATH = "/files/text.txt";
 
     protected DatagramSocket socket = null;
     protected BufferedReader reader = null;
