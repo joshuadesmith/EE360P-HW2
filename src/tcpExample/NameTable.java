@@ -2,6 +2,7 @@ package tcpExample;
 
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
+import java.util.Iterator;
 
 /**
  * Created by joshuasmith on 2/20/17.
@@ -40,6 +41,15 @@ public class NameTable {
 
     public synchronized int insert(String procName, String hostName, int port) {
         int retVal = 1;
+
+        Iterator<NameEntry> iter = table.iterator();
+        while (iter.hasNext()) {
+            NameEntry entry = iter.next();
+            if (procName.equals(entry.procName)) {
+                iter.remove();
+                retVal = 0;
+            }
+        }
 
         table.add(new NameEntry(procName, hostName, port));
         notifyAll();
