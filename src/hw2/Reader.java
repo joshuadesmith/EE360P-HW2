@@ -1,3 +1,5 @@
+package hw2;
+
 /**
  * Created by joshuasmith on 2/13/17.
  */
@@ -21,7 +23,7 @@ public class Reader implements Runnable {
     }
 
     private void read() {
-        System.out.println("Reader " + UUID + " is reading.");
+        System.out.println("hw2.Reader " + UUID + " is reading.");
     }
 
     public int getID() {

@@ -1,3 +1,5 @@
+package hw2;
+
 import gardenTest.Benjamin;
 import gardenTest.Garden;
 import gardenTest.Mary;

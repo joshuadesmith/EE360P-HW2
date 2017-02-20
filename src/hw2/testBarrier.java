@@ -1,13 +1,12 @@
-/**
- * Created by joshuasmith on 2/7/17.
- */
-public class testMonitorBarrier implements Runnable {
+package hw2;
+
+public class testBarrier implements Runnable {
     final static int SIZE = 8;
     final static int ROUND = 8;
 
-    final MonitorCyclicBarrier barrier;
+    final CyclicBarrier barrier;
 
-    public testMonitorBarrier(MonitorCyclicBarrier barrier) {
+    public testBarrier(CyclicBarrier barrier) {
         this.barrier = barrier;
     }
 
@@ -26,11 +25,11 @@ public class testMonitorBarrier implements Runnable {
     }
 
     public static void main(String[] args) {
-        MonitorCyclicBarrier barrier = new MonitorCyclicBarrier(SIZE);
+        CyclicBarrier barrier = new CyclicBarrier(SIZE);
         Thread[] t = new Thread[SIZE];
 
         for (int i = 0; i < SIZE; ++i) {
-            t[i] = new Thread(new testMonitorBarrier(barrier));
+            t[i] = new Thread(new testBarrier(barrier));
         }
 
         for (int i = 0; i < SIZE; ++i) {

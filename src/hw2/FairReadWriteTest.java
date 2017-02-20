@@ -1,3 +1,5 @@
+package hw2;
+
 /**
  * Created by joshuasmith on 2/13/17.
  */

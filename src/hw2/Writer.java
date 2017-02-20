@@ -1,3 +1,5 @@
+package hw2;
+
 /**
  * Created by joshuasmith on 2/13/17.
  */
@@ -22,7 +24,7 @@ public class Writer implements Runnable {
     }
 
     private void write() {
-        System.out.println("Writer " + UUID + " is writing.");
+        System.out.println("hw2.Writer " + UUID + " is writing.");
     }
 
     public int getID() {

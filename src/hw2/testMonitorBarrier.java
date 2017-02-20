@@ -1,12 +1,15 @@
-import java.util.concurrent.BrokenBarrierException;
+package hw2;
 
-public class testBarrier implements Runnable {
+/**
+ * Created by joshuasmith on 2/7/17.
+ */
+public class testMonitorBarrier implements Runnable {
     final static int SIZE = 8;
     final static int ROUND = 8;
 
-    final CyclicBarrier barrier;
+    final MonitorCyclicBarrier barrier;
 
-    public testBarrier(CyclicBarrier barrier) {
+    public testMonitorBarrier(MonitorCyclicBarrier barrier) {
         this.barrier = barrier;
     }
 
@@ -25,11 +28,11 @@ public class testBarrier implements Runnable {
     }
 
     public static void main(String[] args) {
-        CyclicBarrier barrier = new CyclicBarrier(SIZE);
+        MonitorCyclicBarrier barrier = new MonitorCyclicBarrier(SIZE);
         Thread[] t = new Thread[SIZE];
 
         for (int i = 0; i < SIZE; ++i) {
-            t[i] = new Thread(new testBarrier(barrier));
+            t[i] = new Thread(new testMonitorBarrier(barrier));
         }
 
         for (int i = 0; i < SIZE; ++i) {
