@@ -1,13 +1,16 @@
 package hw3;
 
-import java.io.BufferedReader;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.IOException;
+import java.io.*;
+import java.net.DatagramSocket;
+import java.net.InetSocketAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Scanner;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -15,15 +18,24 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class Server {
 
+    private static final int TEMP_TCP_PORT = 2018;
+    private static final String TEMP_HOST_NAME = "localhost";
+    private static final String TEMP_FILE_NAME = "inventory.txt";
+
     private static HashMap<String, Integer> inventory;
     private static AtomicInteger orderCount = new AtomicInteger(1); // Order IDs count up from 1
     private static ArrayList<Order> orderHistory = new ArrayList<Order>();
 
     private static int protocol = 0; // 0 = TCP, 1 = UDP
+    private static ServerSocket tcpSocket = null;
+    private static DatagramSocket udpSocket = null;
+    private static ExecutorService threadPool = null;
 
-    /*public static void main (String[] args) {
-        *//*int tcpPort;
+    public static void main (String[] args) {
+        int tcpPort;
         int udpPort;
+
+        /*
         if (args.length != 3) {
             System.out.println("ERROR: Provide 3 arguments");
             System.out.println("\t(1) <tcpPort>: the port number for TCP connection");
@@ -34,16 +46,29 @@ public class Server {
         }
         tcpPort = Integer.parseInt(args[0]);
         udpPort = Integer.parseInt(args[1]);
-        String fileName = args[2];*//*
-
-        String fileName = "inventory.txt";
+        String fileName = args[2];
+        */
 
         // parse the inventory file
-        initializeInventory(fileName);
+        initializeInventory(TEMP_FILE_NAME);
         printInventory();
 
-        // TODO: handle request from clients
-    }*/
+        try {
+            // For TCP
+            tcpPort = TEMP_TCP_PORT;
+            InetSocketAddress socketAddress = new InetSocketAddress(TEMP_HOST_NAME, tcpPort);
+            tcpSocket = new ServerSocket(tcpPort);
+
+            // For UDP
+
+
+            // Thread handling
+            threadPool = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+
+        } catch (IOException e) {
+            System.err.println("IOException in Server.main");
+        }
+    }
 
     public synchronized String handleCommand(String command) {
         String[] tokens = command.trim().split(" ");
@@ -237,13 +262,51 @@ public class Server {
         return result;
     }
 
-    public class Order {
+    class TCPServerRunnable implements Runnable {
+        @Override
+        public void run() {
+            try {
+                Socket s = null;
+                while ((s = tcpSocket.accept()) != null) {
+                    threadPool.submit(new TCPPortHandler(s));
+                }
+            } catch (IOException e) {
+                System.err.println("IOException in TCPServerRunnable.run");
+            }
+        }
+    }
+
+    class TCPPortHandler implements Runnable {
+        Socket clientSocket;
+
+        protected TCPPortHandler(Socket s) {
+            this.clientSocket = s;
+        }
+
+        @Override
+        public void run() {
+            try {
+                BufferedReader inFromClient = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+                BufferedWriter outToClient = new BufferedWriter(new OutputStreamWriter(clientSocket.getOutputStream()));
+                String command = inFromClient.readLine();
+                String response = handleCommand(command);
+                outToClient.write(response);
+                outToClient.flush();
+                outToClient.close();
+            } catch (IOException e) {
+                System.err.println("IOException in TCPPortHandler.run");
+            }
+        }
+    }
+
+
+    class Order {
         int id;
         String user;
         String product;
         int quantity;
 
-        public Order(String user, String product, int quantity) {
+        Order(String user, String product, int quantity) {
             this.id = orderCount.get();
             this.user = user;
             this.product = product;
