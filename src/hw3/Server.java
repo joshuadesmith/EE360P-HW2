@@ -21,8 +21,8 @@ public class Server {
 
     private static int protocol = 0; // 0 = TCP, 1 = UDP
 
-    public static void main (String[] args) {
-        /*int tcpPort;
+    /*public static void main (String[] args) {
+        *//*int tcpPort;
         int udpPort;
         if (args.length != 3) {
             System.out.println("ERROR: Provide 3 arguments");
@@ -34,7 +34,7 @@ public class Server {
         }
         tcpPort = Integer.parseInt(args[0]);
         udpPort = Integer.parseInt(args[1]);
-        String fileName = args[2];*/
+        String fileName = args[2];*//*
 
         String fileName = "inventory.txt";
 
@@ -43,13 +43,13 @@ public class Server {
         printInventory();
 
         // TODO: handle request from clients
-    }
+    }*/
 
     /**
      * Parses the contents of a text file to initialize the Store inventory
      * @param fileName  Name of the file to be parsed
      */
-    private static synchronized void initializeInventory(String fileName) {
+    protected static synchronized void initializeInventory(String fileName) {
         inventory = new HashMap<String, Integer>();
 
         try {
@@ -83,7 +83,7 @@ public class Server {
     /**
      * Prints the current inventory contents to the console
      */
-    private static synchronized void printInventory() {
+    protected static synchronized void printInventory() {
         for (Map.Entry<String, Integer> invEntry : inventory.entrySet()) {
             System.out.println(invEntry.getKey() + ": " + invEntry.getValue());
         }
@@ -93,7 +93,7 @@ public class Server {
      * Sets the data transfer protocol of the server
      * @param s String sent by client; u = UDP, t = TCP
      */
-    private static synchronized void setProtocol(String s) {
+    protected static synchronized void setProtocol(String s) {
         if (s.toLowerCase().equals("u")) {
             protocol = 0;
         } else if (s.toLowerCase().equals("t")) {
@@ -101,12 +101,16 @@ public class Server {
         }
     }
 
+    protected synchronized Order generateOrder(String user, String product, int quantity) {
+        return new Order(user, product, quantity);
+    }
+
     /**
      * Processes an order placed by a client
      * @param order Order information to be processed
      * @return      Result of order processing.
      */
-    private static synchronized String processPurchase(Order order) {
+    protected static synchronized String processPurchase(Order order) {
 
         if (!inventory.containsKey(order.getProduct())) {
             return "Not Available - We do not sell this product.";
@@ -126,7 +130,7 @@ public class Server {
         return "Your order has been placed " + order.toString();
     }
 
-    private static synchronized String cancelOrder(int id) {
+    protected static synchronized String cancelOrder(int id) {
         Order order = getOrderByID(id);
 
         if (order == null) {
@@ -142,7 +146,7 @@ public class Server {
         return "Order " + id + " has been cancelled.";
     }
 
-    private static synchronized ArrayList<String> searchOrders(String user) {
+    protected static synchronized ArrayList<String> searchOrders(String user) {
         ArrayList<String> searchResults = new ArrayList<String>(1);
         ArrayList<Order> userOrders = queryOrdersByUser(user);
 
@@ -157,7 +161,7 @@ public class Server {
         return searchResults;
     }
 
-    private static synchronized ArrayList<String> listInventory() {
+    protected static synchronized ArrayList<String> listInventory() {
         ArrayList<String> invList = new ArrayList<String>(0);
 
         for (Map.Entry<String, Integer> invEntry : inventory.entrySet()) {
@@ -195,13 +199,13 @@ public class Server {
         return result;
     }
 
-    private class Order {
+    public class Order {
         int id;
         String user;
         String product;
         int quantity;
 
-        protected Order(String user, String product, int quantity) {
+        public Order(String user, String product, int quantity) {
             this.id = orderCount.get();
             this.user = user;
             this.product = product;
