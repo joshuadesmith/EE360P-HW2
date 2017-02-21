@@ -9,47 +9,61 @@ public class InventoryTest {
 
     public static String file = "inventory.txt";
 
+    /* EXPECTED RESULTS:
+    Finished initializing inventory.
+    ps4: 17
+    phone: 20
+    xbox: 8
+    laptop: 15
+    camera: 10
+
+    Your order has been placed 1 josh camera 10
+    Your order has been placed 2 josh ps4 5
+    Not Available - Not enough items.
+
+    Results for Josh:
+    1, camera, 10
+    2, ps4, 5
+
+    Results for Ben:
+    No order found for ben
+
+    Order 2 has been cancelled.
+
+    ps4 17
+    phone 20
+    xbox 8
+    laptop 15
+    camera 0
+     */
+
     public static void main(String[] args) {
         Server server = new Server();
-        server.initializeInventory(file);
-        server.printInventory();
+        Server.initializeInventory(file);
+        Server.printInventory();
 
-        ArrayList<String> joshSearch;
-        ArrayList<String> benSearch;
-
-        Server.Order testOrder1 = server.generateOrder("josh", "camera", 10);
-        String result1 = server.processPurchase(testOrder1);
-        Server.Order testOrder2 = server.generateOrder("josh", "ps4", 5);
-        String result2 = server.processPurchase(testOrder2);
-        Server.Order testOrder3 = server.generateOrder("ben", "camera", 1);
-        String result3 = server.processPurchase(testOrder3);
+        String result1 = server.handleCommand("purchase josh camera 10");
+        String result2 = server.handleCommand("purchase josh ps4 5");
+        String result3 = server.handleCommand("purchase ben camera 1");
 
         System.out.println("");
         System.out.println(result1);
         System.out.println(result2);
         System.out.println(result3 + "\n");
 
-        joshSearch = server.searchOrders("josh");
-        benSearch = server.searchOrders("ben");
+        String joshSearch = server.searchOrders("josh");
+        String benSearch = server.searchOrders("ben");
 
         System.out.println("Results for Josh:");
-        for (String s : joshSearch) {
-            System.out.println(s);
-        }
-        System.out.println("");
-
+        System.out.println(joshSearch);
         System.out.println("Results for Ben:");
-        for (String s : benSearch) {
-            System.out.println(s);
-        }
-        System.out.println("");
+        System.out.println(benSearch);
 
-        String result4 = server.cancelOrder(2);
+
+        String result4 = server.handleCommand("cancel 2");
         System.out.println(result4 + "\n");
 
-        ArrayList<String> inv = server.listInventory();
-        for (String s : inv) {
-            System.out.println(s);
-        }
+        String inv = server.handleCommand("list");
+        System.out.println(inv);
     }
 }

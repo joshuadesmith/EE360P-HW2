@@ -45,6 +45,38 @@ public class Server {
         // TODO: handle request from clients
     }*/
 
+    public synchronized String handleCommand(String command) {
+        String[] tokens = command.trim().split(" ");
+
+        String response = null;
+
+        if (tokens[0].toLowerCase().equals("setmode")) {
+            setProtocol(tokens[1]);
+        }
+
+        else if (tokens[0].toLowerCase().equals("purchase")) {
+            response = processPurchase(new Order(tokens[1], tokens[2], Integer.parseInt(tokens[3])));
+        }
+
+        else if (tokens[0].toLowerCase().equals("cancel")) {
+            response = cancelOrder(Integer.parseInt(tokens[1]));
+        }
+
+        else if (tokens[0].toLowerCase().equals("search")) {
+            response = searchOrders(tokens[1]);
+        }
+
+        else if (tokens[0].toLowerCase().equals("list")) {
+            response = listInventory();
+        }
+
+        else {
+            response = "Invalid Command: " + command;
+        }
+
+        return response;
+    }
+
     /**
      * Parses the contents of a text file to initialize the Store inventory
      * @param fileName  Name of the file to be parsed
@@ -93,7 +125,7 @@ public class Server {
      * Sets the data transfer protocol of the server
      * @param s String sent by client; u = UDP, t = TCP
      */
-    protected static synchronized void setProtocol(String s) {
+    protected synchronized void setProtocol(String s) {
         if (s.toLowerCase().equals("u")) {
             protocol = 0;
         } else if (s.toLowerCase().equals("t")) {
@@ -110,7 +142,7 @@ public class Server {
      * @param order Order information to be processed
      * @return      Result of order processing.
      */
-    protected static synchronized String processPurchase(Order order) {
+    protected synchronized String processPurchase(Order order) {
 
         if (!inventory.containsKey(order.getProduct())) {
             return "Not Available - We do not sell this product.";
@@ -130,7 +162,7 @@ public class Server {
         return "Your order has been placed " + order.toString();
     }
 
-    protected static synchronized String cancelOrder(int id) {
+    protected synchronized String cancelOrder(int id) {
         Order order = getOrderByID(id);
 
         if (order == null) {
@@ -146,36 +178,42 @@ public class Server {
         return "Order " + id + " has been cancelled.";
     }
 
-    protected static synchronized ArrayList<String> searchOrders(String user) {
-        ArrayList<String> searchResults = new ArrayList<String>(1);
+    protected synchronized String searchOrders(String user) {
+        StringBuilder builder = new StringBuilder();
         ArrayList<Order> userOrders = queryOrdersByUser(user);
 
         if (userOrders.size() == 0) {
-            searchResults.add("No order found for " + user);
+            builder.append("No order found for " + user);
         } else {
             for (Order order : userOrders) {
-                searchResults.add(order.toStringNameless());
+                builder.append(order.toStringNameless());
+                builder.append("\n");
             }
         }
 
-        return searchResults;
+        return builder.toString();
     }
 
-    protected static synchronized ArrayList<String> listInventory() {
+    protected synchronized String listInventory() {
         ArrayList<String> invList = new ArrayList<String>(0);
+        StringBuilder builder = new StringBuilder();
+        String list = null;
 
         for (Map.Entry<String, Integer> invEntry : inventory.entrySet()) {
-            invList.add(invEntry.getKey() + " " + Integer.toString(invEntry.getValue()));
+            builder.append(invEntry.getKey());
+            builder.append(" ");
+            builder.append(invEntry.getValue());
+            builder.append("\n");
         }
 
-        if (invList.size() == 0) {
-            invList.add("The store is empty.");
+        if (inventory.isEmpty()) {
+            builder.append("The store is empty.");
         }
 
-        return invList;
+        return builder.toString();
     }
 
-    private static synchronized ArrayList<Order> queryOrdersByUser(String user) {
+    private synchronized ArrayList<Order> queryOrdersByUser(String user) {
         ArrayList<Order> userOrders = new ArrayList<Order>(0);
 
         for (Order order : orderHistory) {
@@ -187,7 +225,7 @@ public class Server {
         return userOrders;
     }
 
-    private static synchronized Order getOrderByID(int id) {
+    private synchronized Order getOrderByID(int id) {
         Order result = null;
 
         for (Order order : orderHistory) {
