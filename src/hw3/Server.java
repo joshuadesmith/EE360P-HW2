@@ -26,7 +26,6 @@ public class Server {
     private static AtomicInteger orderCount = new AtomicInteger(1); // Order IDs count up from 1
     private static ArrayList<Order> orderHistory = new ArrayList<Order>();
 
-    private static int protocol = 0; // 0 = TCP, 1 = UDP
     private static ServerSocket tcpSocket = null;
     private static DatagramSocket udpSocket = null;
     private static ExecutorService threadPool = null;
@@ -48,6 +47,7 @@ public class Server {
         udpPort = Integer.parseInt(args[1]);
         String fileName = args[2];
         */
+        Server server = new Server();
 
         // parse the inventory file
         initializeInventory(TEMP_FILE_NAME);
@@ -63,7 +63,8 @@ public class Server {
 
 
             // Thread handling
-            threadPool = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+            threadPool = Executors.newCachedThreadPool();
+            threadPool.submit(server.new TCPServerRunnable());
 
         } catch (IOException e) {
             System.err.println("IOException in Server.main");
@@ -76,7 +77,7 @@ public class Server {
         String response = null;
 
         if (tokens[0].toLowerCase().equals("setmode")) {
-            setProtocol(tokens[1]);
+
         }
 
         else if (tokens[0].toLowerCase().equals("purchase")) {
@@ -143,18 +144,6 @@ public class Server {
     protected static synchronized void printInventory() {
         for (Map.Entry<String, Integer> invEntry : inventory.entrySet()) {
             System.out.println(invEntry.getKey() + ": " + invEntry.getValue());
-        }
-    }
-
-    /**
-     * Sets the data transfer protocol of the server
-     * @param s String sent by client; u = UDP, t = TCP
-     */
-    protected synchronized void setProtocol(String s) {
-        if (s.toLowerCase().equals("u")) {
-            protocol = 0;
-        } else if (s.toLowerCase().equals("t")) {
-            protocol = 1;
         }
     }
 
@@ -268,8 +257,10 @@ public class Server {
             try {
                 Socket s = null;
                 while ((s = tcpSocket.accept()) != null) {
+                    System.out.println("Got Socket at port: " + s.getLocalPort());
                     threadPool.submit(new TCPPortHandler(s));
                 }
+                System.out.println("TCP Server Runnable ending.");
             } catch (IOException e) {
                 System.err.println("IOException in TCPServerRunnable.run");
             }
@@ -289,10 +280,12 @@ public class Server {
                 BufferedReader inFromClient = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
                 BufferedWriter outToClient = new BufferedWriter(new OutputStreamWriter(clientSocket.getOutputStream()));
                 String command = inFromClient.readLine();
+                System.out.println("Received command: " + command);
                 String response = handleCommand(command);
                 outToClient.write(response);
                 outToClient.flush();
                 outToClient.close();
+                inFromClient.close();
             } catch (IOException e) {
                 System.err.println("IOException in TCPPortHandler.run");
             }
