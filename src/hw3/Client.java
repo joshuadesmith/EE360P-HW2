@@ -12,7 +12,9 @@ public class Client {
     private static final int TEMP_TCP_PORT = 2018;
     private static final String TEMP_HOST_NAME = "localhost";
 
-    private static Socket tcpSocket;
+    private Socket tcpSocket;
+    private DataOutputStream outToServer;
+    private DataInputStream inFromServer;
 
     public static void main (String[] args) {
 
@@ -35,12 +37,7 @@ public class Client {
         udpPort = Integer.parseInt(args[2]);
         */
 
-        try {
-            tcpSocket = new Socket(TEMP_HOST_NAME, TEMP_TCP_PORT);
-        } catch (IOException e) {
-            System.err.println("IOException in Client.main");
-        }
-
+        Client client = new Client();
 
         Scanner sc = new Scanner(System.in);
         while(sc.hasNextLine()) {
@@ -59,54 +56,70 @@ public class Client {
                     System.out.println("Communication protocol set: TCP");
                 }
             }
+
             else if (tokens[0].equals("purchase")) {
                 // TODO: send appropriate command to the server and display the
                 // appropriate responses form the server
                 String command = tokens[0] + " " + tokens[1] + " " + tokens[2] + " " + tokens[3];
-                response = issueCommand(command, protocol);
-                System.out.println(response);
-            } else if (tokens[0].equals("cancel")) {
+                response = client.issueCommand(command, protocol);
+                System.out.println("Response received: \n" + response);
+            }
+
+            else if (tokens[0].equals("cancel")) {
                 // TODO: send appropriate command to the server and display the
                 // appropriate responses form the server
-                response = issueCommand(cmd, protocol);
-                System.out.println(response);
-            } else if (tokens[0].equals("search")) {
+
+            }
+
+            else if (tokens[0].equals("search")) {
                 // TODO: send appropriate command to the server and display the
                 // appropriate responses form the server
-                response = issueCommand(cmd, protocol);
-                System.out.println(response);
-            } else if (tokens[0].equals("list")) {
+
+            }
+
+            else if (tokens[0].equals("list")) {
                 // TODO: send appropriate command to the server and display the
                 // appropriate responses form the server
-                response = issueCommand(cmd, protocol);
-                System.out.println(response);
-            } else {
+
+            }
+
+            else {
                 System.out.println("ERROR: No such command");
             }
         }
     }
 
-    private static String issueCommand(String command, int protocol) {
+    private String issueCommand(String command, int protocol) {
         String response = null;
 
         try {
             if (protocol == 0) {
                 // UDP CODE HERE
-            } else if (protocol == 1) {
-                System.out.println("Attempting to issue command");
-                BufferedWriter outToServer = new BufferedWriter(new OutputStreamWriter(tcpSocket.getOutputStream()));
-                BufferedReader inFromServer = new BufferedReader(new InputStreamReader(tcpSocket.getInputStream()));
+            }
 
-                outToServer.write(command);
-                response = inFromServer.readLine();
+            else if (protocol == 1) {
+                setUpTCPSocket();
+                outToServer.writeUTF(command);
+                System.out.println("Issued Command: " + command);
                 outToServer.flush();
-                outToServer.close();
-                inFromServer.close();
+
+                response = inFromServer.readUTF();
+                tcpSocket.close();
             }
         } catch (IOException e) {
-            System.err.println("IOException in Client.issueCommand");
+            System.err.println("IOException in Client.issueCommand: " + e);
         }
 
         return response;
+    }
+
+    private void setUpTCPSocket() {
+        try {
+            tcpSocket = new Socket(TEMP_HOST_NAME, TEMP_TCP_PORT);
+            outToServer = new DataOutputStream(tcpSocket.getOutputStream());
+            inFromServer = new DataInputStream(tcpSocket.getInputStream());
+        } catch (IOException e) {
+            System.err.println("IOException in Client.setUpTCPSocket: " + e);
+        }
     }
 }

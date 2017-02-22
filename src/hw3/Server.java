@@ -277,15 +277,15 @@ public class Server {
         @Override
         public void run() {
             try {
-                BufferedReader inFromClient = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-                BufferedWriter outToClient = new BufferedWriter(new OutputStreamWriter(clientSocket.getOutputStream()));
-                String command = inFromClient.readLine();
+                DataInputStream inFromClient = new DataInputStream(clientSocket.getInputStream());
+                DataOutputStream outToClient = new DataOutputStream(clientSocket.getOutputStream());
+                String command = inFromClient.readUTF();
                 System.out.println("Received command: " + command);
+
                 String response = handleCommand(command);
-                outToClient.write(response);
+                outToClient.writeUTF(response);
                 outToClient.flush();
-                outToClient.close();
-                inFromClient.close();
+
             } catch (IOException e) {
                 System.err.println("IOException in TCPPortHandler.run");
             }
