@@ -68,19 +68,24 @@ public class Client {
             else if (tokens[0].equals("cancel")) {
                 // TODO: send appropriate command to the server and display the
                 // appropriate responses form the server
-
+                String command = tokens[0] + " " + tokens[1];
+                response = client.issueCommand(command, protocol);
+                System.out.println("Response received: \n" + response);
             }
 
             else if (tokens[0].equals("search")) {
                 // TODO: send appropriate command to the server and display the
                 // appropriate responses form the server
-
+                String command = tokens[0] + " " + tokens[1];
+                response = client.issueCommand(command, protocol);
+                System.out.println("Response received: \n" + response);
             }
 
             else if (tokens[0].equals("list")) {
                 // TODO: send appropriate command to the server and display the
                 // appropriate responses form the server
-
+                response = client.issueCommand(tokens[0], protocol);
+                System.out.println("Response received: \n" + response);
             }
 
             else {
@@ -93,10 +98,13 @@ public class Client {
         String response = null;
 
         try {
+
+            // UDP protocol
             if (protocol == 0) {
                 // UDP CODE HERE
             }
 
+            // TCP protocol
             else if (protocol == 1) {
                 setUpTCPSocket();
                 outToServer.writeUTF(command);
@@ -106,6 +114,7 @@ public class Client {
                 response = inFromServer.readUTF();
                 tcpSocket.close();
             }
+
         } catch (IOException e) {
             System.err.println("IOException in Client.issueCommand: " + e);
         }

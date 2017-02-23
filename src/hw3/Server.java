@@ -71,6 +71,11 @@ public class Server {
         }
     }
 
+    /**
+     * Parses a command string and executes the command
+     * @param command   Command string received from client
+     * @return          String that contains the server's response
+     */
     public synchronized String handleCommand(String command) {
         String[] tokens = command.trim().split(" ");
 
@@ -147,6 +152,14 @@ public class Server {
         }
     }
 
+    /**
+     * Creates an Order object from the input strings
+     * Assigns the order an ID
+     * @param user      Name of the user the order was made by
+     * @param product   Name of the product that the user ordered
+     * @param quantity  Number of units of the product
+     * @return          The resulting Order object
+     */
     protected synchronized Order generateOrder(String user, String product, int quantity) {
         return new Order(user, product, quantity);
     }
@@ -176,6 +189,12 @@ public class Server {
         return "Your order has been placed " + order.toString();
     }
 
+    /**
+     * Cancels an order by removing it from the list of past orders
+     * and then updates current inventory
+     * @param id
+     * @return
+     */
     protected synchronized String cancelOrder(int id) {
         Order order = getOrderByID(id);
 
@@ -251,13 +270,15 @@ public class Server {
         return result;
     }
 
+    /**
+     * Runnable that constantly checks for TCP connections
+     */
     class TCPServerRunnable implements Runnable {
         @Override
         public void run() {
             try {
                 Socket s = null;
                 while ((s = tcpSocket.accept()) != null) {
-                    System.out.println("Got Socket at port: " + s.getLocalPort());
                     threadPool.submit(new TCPPortHandler(s));
                 }
                 System.out.println("TCP Server Runnable ending.");
@@ -267,6 +288,9 @@ public class Server {
         }
     }
 
+    /**
+     * Handles a single command via TCP protocol
+     */
     class TCPPortHandler implements Runnable {
         Socket clientSocket;
 
@@ -292,7 +316,9 @@ public class Server {
         }
     }
 
-
+    /**
+     * Contains information for an order made
+     */
     class Order {
         int id;
         String user;
