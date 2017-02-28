@@ -39,8 +39,6 @@ public class InventoryTest {
 
     public static void main(String[] args) {
         Server server = new Server();
-        Server.initializeInventory(file);
-        Server.printInventory();
 
         String result1 = server.handleCommand("purchase josh camera 10");
         String result2 = server.handleCommand("purchase josh ps4 5");
@@ -51,13 +49,13 @@ public class InventoryTest {
         System.out.println(result2);
         System.out.println(result3 + "\n");
 
-        String joshSearch = server.searchOrders("josh");
-        String benSearch = server.searchOrders("ben");
+        //String joshSearch = server.searchOrders("josh");
+        //String benSearch = server.searchOrders("ben");
 
         System.out.println("Results for Josh:");
-        System.out.println(joshSearch);
+        //System.out.println(joshSearch);
         System.out.println("Results for Ben:");
-        System.out.println(benSearch);
+        //System.out.println(benSearch);
 
 
         String result4 = server.handleCommand("cancel 2");

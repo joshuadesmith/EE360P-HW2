@@ -1,10 +1,7 @@
 package hw3;
 
 import java.io.*;
-import java.net.DatagramSocket;
-import java.net.InetSocketAddress;
-import java.net.ServerSocket;
-import java.net.Socket;
+import java.net.*;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -19,6 +16,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class Server {
 
     private static final int TEMP_TCP_PORT = 2018;
+    private static final int TEMP_UDP_PORT = 4036;
+    private static final int DATA_BUFFER_SIZE = 512;
     private static final String TEMP_HOST_NAME = "localhost";
     private static final String TEMP_FILE_NAME = "inventory.txt";
 
@@ -29,12 +28,15 @@ public class Server {
     private static ServerSocket tcpSocket = null;
     private static DatagramSocket udpSocket = null;
     private static ExecutorService threadPool = null;
+    
+    private int tcpPortNum;
+    private int udpPortNum;
 
     public static void main (String[] args) {
         int tcpPort;
         int udpPort;
 
-        /*
+        
         if (args.length != 3) {
             System.out.println("ERROR: Provide 3 arguments");
             System.out.println("\t(1) <tcpPort>: the port number for TCP connection");
@@ -46,28 +48,35 @@ public class Server {
         tcpPort = Integer.parseInt(args[0]);
         udpPort = Integer.parseInt(args[1]);
         String fileName = args[2];
-        */
+        
         Server server = new Server();
+        server.tcpPortNum = tcpPort;
+        server.udpPortNum = udpPort;
 
         // parse the inventory file
         initializeInventory(TEMP_FILE_NAME);
+        
+        // for debugging
         printInventory();
 
         try {
             // For TCP
-            tcpPort = TEMP_TCP_PORT;
+            //tcpPort = TEMP_TCP_PORT;
             InetSocketAddress socketAddress = new InetSocketAddress(TEMP_HOST_NAME, tcpPort);
             tcpSocket = new ServerSocket(tcpPort);
 
             // For UDP
+            //udpPort = TEMP_UDP_PORT;
+            udpSocket = new DatagramSocket(udpPort);
 
 
             // Thread handling
             threadPool = Executors.newCachedThreadPool();
             threadPool.submit(server.new TCPServerRunnable());
-
+            threadPool.submit(server.new UDPServerRunnable());
         } catch (IOException e) {
             System.err.println("IOException in Server.main");
+            e.printStackTrace();
         }
     }
 
@@ -76,7 +85,7 @@ public class Server {
      * @param command   Command string received from client
      * @return          String that contains the server's response
      */
-    public synchronized String handleCommand(String command) {
+    synchronized String handleCommand(String command) {
         String[] tokens = command.trim().split(" ");
 
         String response = null;
@@ -112,7 +121,7 @@ public class Server {
      * Parses the contents of a text file to initialize the Store inventory
      * @param fileName  Name of the file to be parsed
      */
-    protected static synchronized void initializeInventory(String fileName) {
+    private static synchronized void initializeInventory(String fileName) {
         inventory = new HashMap<String, Integer>();
 
         try {
@@ -130,7 +139,9 @@ public class Server {
                     keepReading = false;
                 }
             }
+            // For debugging
             System.out.println("Finished initializing inventory.");
+            
             if (inventory.size() == 0) {
                 System.out.println("Warning: Inventory is empty");
             }
@@ -144,12 +155,15 @@ public class Server {
     }
 
     /**
-     * Prints the current inventory contents to the console
+     * Prints the current inventory contents to the Server's console
+     * FOR DEBUGGING
      */
-    protected static synchronized void printInventory() {
+    private static synchronized void printInventory() {
+        System.out.println("Current Inventory:");
         for (Map.Entry<String, Integer> invEntry : inventory.entrySet()) {
             System.out.println(invEntry.getKey() + ": " + invEntry.getValue());
         }
+        System.out.println("");
     }
 
     /**
@@ -160,25 +174,25 @@ public class Server {
      * @param quantity  Number of units of the product
      * @return          The resulting Order object
      */
-    protected synchronized Order generateOrder(String user, String product, int quantity) {
+    private synchronized Order generateOrder(String user, String product, int quantity) {
         return new Order(user, product, quantity);
     }
 
     /**
      * Processes an order placed by a client
-     * @param order Order information to be processed
-     * @return      Result of order processing.
+     * @param order     Order information to be processed
+     * @return          Result of order processing.
      */
-    protected synchronized String processPurchase(Order order) {
+    private synchronized String processPurchase(Order order) {
 
         if (!inventory.containsKey(order.getProduct())) {
-            return "Not Available - We do not sell this product.";
+            return "Not Available - We do not sell this product.\n";
         }
 
         // Inventory contains the requested product
         int currentQuant = inventory.get(order.getProduct());
         if (currentQuant < order.getQuantity()) {
-            return "Not Available - Not enough items.";
+            return "Not Available - Not enough items.\n";
         }
 
         // Inventory has enough stock of requested product
@@ -186,20 +200,20 @@ public class Server {
         inventory.put(order.getProduct(), currentQuant - order.getQuantity());
         orderHistory.add(order);
         orderCount.incrementAndGet();
-        return "Your order has been placed " + order.toString();
+        return "Your order has been placed " + order.toString() + "\n";
     }
 
     /**
      * Cancels an order by removing it from the list of past orders
      * and then updates current inventory
-     * @param id
-     * @return
+     * @param id        ID of order to be cancelled
+     * @return          Response to be sent back to client
      */
-    protected synchronized String cancelOrder(int id) {
+    private synchronized String cancelOrder(int id) {
         Order order = getOrderByID(id);
 
         if (order == null) {
-            return Integer.toString(id) + " not found, no such order";
+            return Integer.toString(id) + " not found, no such order\n";
         }
 
         // Order with id exists
@@ -208,15 +222,20 @@ public class Server {
         currentQuant += order.getQuantity();
         inventory.put(order.getProduct(), currentQuant);
         orderHistory.remove(order);
-        return "Order " + id + " has been cancelled.";
+        return "Order " + id + " has been cancelled.\n";
     }
 
-    protected synchronized String searchOrders(String user) {
+    /**
+     * Searches past orders for all orders made by a user
+     * @param user      Username used to search orders
+     * @return          Response to be sent back to client
+     */
+    private synchronized String searchOrders(String user) {
         StringBuilder builder = new StringBuilder();
         ArrayList<Order> userOrders = queryOrdersByUser(user);
 
         if (userOrders.size() == 0) {
-            builder.append("No order found for " + user);
+            builder.append("No order found for " + user + "\n");
         } else {
             for (Order order : userOrders) {
                 builder.append(order.toStringNameless());
@@ -224,10 +243,15 @@ public class Server {
             }
         }
 
+        //builder.append("\n");
         return builder.toString();
     }
 
-    protected synchronized String listInventory() {
+    /**
+     * Lists the current inventory of the store
+     * @return          A string containing all store inventory
+     */
+    private synchronized String listInventory() {
         ArrayList<String> invList = new ArrayList<String>(0);
         StringBuilder builder = new StringBuilder();
         String list = null;
@@ -240,12 +264,18 @@ public class Server {
         }
 
         if (inventory.isEmpty()) {
-            builder.append("The store is empty.");
+            builder.append("The store is empty.\n");
         }
 
+        //builder.append("\n");
         return builder.toString();
     }
 
+    /**
+     * Gets an a list of all the orders made by a specified user
+     * @param user      Name of the user
+     * @return          ArrayList of all the orders that the user made
+     */
     private synchronized ArrayList<Order> queryOrdersByUser(String user) {
         ArrayList<Order> userOrders = new ArrayList<Order>(0);
 
@@ -258,6 +288,12 @@ public class Server {
         return userOrders;
     }
 
+    /**
+     * Gets the order associated with a specific order ID
+     * @param id        Order ID to search for
+     * @return          Order object associated with ID
+     *                  Null if no order found
+     */
     private synchronized Order getOrderByID(int id) {
         Order result = null;
 
@@ -273,13 +309,13 @@ public class Server {
     /**
      * Runnable that constantly checks for TCP connections
      */
-    class TCPServerRunnable implements Runnable {
+    private class TCPServerRunnable implements Runnable {
         @Override
         public void run() {
             try {
                 Socket s = null;
                 while ((s = tcpSocket.accept()) != null) {
-                    threadPool.submit(new TCPPortHandler(s));
+                    threadPool.submit(new TCPCommandHandler(s));
                 }
                 System.out.println("TCP Server Runnable ending.");
             } catch (IOException e) {
@@ -291,10 +327,10 @@ public class Server {
     /**
      * Handles a single command via TCP protocol
      */
-    class TCPPortHandler implements Runnable {
+    private class TCPCommandHandler implements Runnable {
         Socket clientSocket;
 
-        protected TCPPortHandler(Socket s) {
+        TCPCommandHandler(Socket s) {
             this.clientSocket = s;
         }
 
@@ -304,14 +340,69 @@ public class Server {
                 DataInputStream inFromClient = new DataInputStream(clientSocket.getInputStream());
                 DataOutputStream outToClient = new DataOutputStream(clientSocket.getOutputStream());
                 String command = inFromClient.readUTF();
-                System.out.println("Received command: " + command);
+                System.out.println("Received command via TCP: " + command);
 
                 String response = handleCommand(command);
                 outToClient.writeUTF(response);
                 outToClient.flush();
 
             } catch (IOException e) {
-                System.err.println("IOException in TCPPortHandler.run");
+                System.err.println("IOException in TCPCommandHandler.run");
+            }
+        }
+    }
+
+    /**
+     * Runnable that constantly checks for UDP packets
+     */
+    private class UDPServerRunnable implements Runnable {
+        private boolean keepChecking = true;
+
+        @Override
+        public void run() {
+            while (keepChecking) {
+                byte[] buffer = new byte[DATA_BUFFER_SIZE];
+                DatagramPacket recPacket = new DatagramPacket(buffer, buffer.length);
+
+                try {
+                    udpSocket.receive(recPacket);
+                    threadPool.submit(new UDPCommandHandler(recPacket));
+                } catch (IOException e) {
+                    System.err.println("IOException in UDPServerRunnable.run: " + e);
+                    keepChecking = false;
+                }
+            }
+        }
+    }
+
+    /**
+     * Handles a single command sent via Datagram Packet
+     */
+    private class UDPCommandHandler implements Runnable {
+        DatagramPacket clientPacket;
+
+        UDPCommandHandler(DatagramPacket packet) {
+            this.clientPacket = packet;
+        }
+
+        @Override
+        public void run() {
+            String command = null;
+            String response = null;
+
+            try {
+                command = new String(clientPacket.getData(), "UTF-8");
+                System.out.println("Received command via UDP: " + command);
+                response = handleCommand(command);
+
+                byte[] buf = response.getBytes();
+                DatagramPacket responsePacket = new DatagramPacket(buf, buf.length, clientPacket.getAddress(), clientPacket.getPort());
+                udpSocket.send(responsePacket);
+
+            } catch (UnsupportedEncodingException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                System.err.println("IOException in UDPCommandHandler.run: " + e);
             }
         }
     }
