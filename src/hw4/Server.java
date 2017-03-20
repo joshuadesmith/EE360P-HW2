@@ -28,30 +28,35 @@ public class Server {
     private static ServerSocket tcpSocket = null;
     private static DatagramSocket udpSocket = null;
     private static ExecutorService threadPool = null;
-    
+
     private int tcpPortNum;
     private int udpPortNum;
 
     public static void main (String[] args) {
-        int tcpPort;
-        int udpPort;
 
-        
-        if (args.length != 3) {
-            System.out.println("ERROR: Provide 3 arguments");
-            System.out.println("\t(1) <tcpPort>: the port number for TCP connection");
-            System.out.println("\t(2) <udpPort>: the port number for UDP connection");
-            System.out.println("\t(3) <file>: the file of inventory");
+        Scanner sc = new Scanner(System.in);
+        int myID = sc.nextInt();
+        int numServer = sc.nextInt();
+        String inventoryPath = sc.next();
+        sc.nextLine();
 
-            System.exit(-1);
+        System.out.println("[DEBUG] my id: " + myID);
+        System.out.println("[DEBUG] numServer: " + numServer);
+        System.out.println("[DEBUG] inventory path: " + inventoryPath);
+
+        for (int i = 0; i < numServer; i++) {
+            // TODO: parse inputs to get the ips and ports of servers
+            String str = sc.next();
+            System.out.println("address for server " + i + ": " + str);
         }
+
+        int tcpPort;
+
         tcpPort = Integer.parseInt(args[0]);
-        udpPort = Integer.parseInt(args[1]);
         String fileName = args[2];
         
         Server server = new Server();
         server.tcpPortNum = tcpPort;
-        server.udpPortNum = udpPort;
 
         // parse the inventory file
         initializeInventory(TEMP_FILE_NAME);
@@ -65,15 +70,10 @@ public class Server {
             InetSocketAddress socketAddress = new InetSocketAddress(TEMP_HOST_NAME, tcpPort);
             tcpSocket = new ServerSocket(tcpPort);
 
-            // For UDP
-            //udpPort = TEMP_UDP_PORT;
-            udpSocket = new DatagramSocket(udpPort);
-
 
             // Thread handling
             threadPool = Executors.newCachedThreadPool();
             threadPool.submit(server.new TCPServerRunnable());
-            threadPool.submit(server.new UDPServerRunnable());
         } catch (IOException e) {
             System.err.println("IOException in Server.main");
             e.printStackTrace();
@@ -352,60 +352,6 @@ public class Server {
         }
     }
 
-    /**
-     * Runnable that constantly checks for UDP packets
-     */
-    private class UDPServerRunnable implements Runnable {
-        private boolean keepChecking = true;
-
-        @Override
-        public void run() {
-            while (keepChecking) {
-                byte[] buffer = new byte[DATA_BUFFER_SIZE];
-                DatagramPacket recPacket = new DatagramPacket(buffer, buffer.length);
-
-                try {
-                    udpSocket.receive(recPacket);
-                    threadPool.submit(new UDPCommandHandler(recPacket));
-                } catch (IOException e) {
-                    System.err.println("IOException in UDPServerRunnable.run: " + e);
-                    keepChecking = false;
-                }
-            }
-        }
-    }
-
-    /**
-     * Handles a single command sent via Datagram Packet
-     */
-    private class UDPCommandHandler implements Runnable {
-        DatagramPacket clientPacket;
-
-        UDPCommandHandler(DatagramPacket packet) {
-            this.clientPacket = packet;
-        }
-
-        @Override
-        public void run() {
-            String command = null;
-            String response = null;
-
-            try {
-                command = new String(clientPacket.getData(), "UTF-8");
-                System.out.println("Received command via UDP: " + command);
-                response = handleCommand(command);
-
-                byte[] buf = response.getBytes();
-                DatagramPacket responsePacket = new DatagramPacket(buf, buf.length, clientPacket.getAddress(), clientPacket.getPort());
-                udpSocket.send(responsePacket);
-
-            } catch (UnsupportedEncodingException e) {
-                e.printStackTrace();
-            } catch (IOException e) {
-                System.err.println("IOException in UDPCommandHandler.run: " + e);
-            }
-        }
-    }
 
     /**
      * Contains information for an order made
