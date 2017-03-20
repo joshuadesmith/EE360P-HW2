@@ -57,7 +57,7 @@ public class ClientDavid {
         }
     }
 
-    private String issueCommand(String command, InetSocketAddress[] servers,int numServer) {
+    private String issueCommand(String command,InetSocketAddress[] servers,int numServer) {
         String response = null;
 
         try {
@@ -85,11 +85,12 @@ public class ClientDavid {
             tcpSocket = new Socket();
             currentServer = servers[index];
             try {
-					/* handle TCP connection to server */
+                /* handle TCP connection to server */
                 tcpSocket.setSoTimeout(100);
                 try {
                     tcpSocket.connect(currentServer);
                 } catch (Exception e) {
+                    // TODO: check how we handle running out of servers to check
                     index = (index + 1) % numServer;
                     continue;
                 }
