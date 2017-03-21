@@ -7,7 +7,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Scanner;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -15,22 +14,20 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class Server {
 
-    private static final int TEMP_TCP_PORT = 2018;
-    private static final int TEMP_UDP_PORT = 4036;
-    private static final int DATA_BUFFER_SIZE = 512;
-    private static final String TEMP_HOST_NAME = "localhost";
-    private static final String TEMP_FILE_NAME = "inventory.txt";
-
     private static HashMap<String, Integer> inventory;
     private static AtomicInteger orderCount = new AtomicInteger(1); // Order IDs count up from 1
     private static ArrayList<Order> orderHistory = new ArrayList<Order>();
-
     private static ServerSocket tcpSocket = null;
-    private static DatagramSocket udpSocket = null;
     private static ExecutorService threadPool = null;
 
-    private int tcpPortNum;
-    private int udpPortNum;
+    private InetSocketAddress[] serverList;
+    private int serversRunning;
+    private int ID;
+
+    public Server(int serversRunning, int ID) {
+        this.serversRunning = serversRunning;
+        this.ID = ID;
+    }
 
     public static void main (String[] args) {
 
@@ -44,40 +41,22 @@ public class Server {
         System.out.println("[DEBUG] numServer: " + numServer);
         System.out.println("[DEBUG] inventory path: " + inventoryPath);
 
+        Server thisServer = new Server(numServer, myID);
+        thisServer.serverList = new InetSocketAddress[numServer];
+
         for (int i = 0; i < numServer; i++) {
             // TODO: parse inputs to get the ips and ports of servers
-            String str = sc.next();
-            System.out.println("address for server " + i + ": " + str);
+            String[] str = sc.nextLine().trim().split(":");
+            System.out.println("address for server " + i + ": " + str[0]);
+            thisServer.serverList[i] = new InetSocketAddress(str[0], Integer.parseInt(str[1]));
         }
 
-        int tcpPort;
-
-        tcpPort = Integer.parseInt(args[0]);
-        String fileName = args[2];
-        
-        Server server = new Server();
-        server.tcpPortNum = tcpPort;
-
         // parse the inventory file
-        initializeInventory(TEMP_FILE_NAME);
+        initializeInventory(inventoryPath);
         
         // for debugging
         printInventory();
 
-        try {
-            // For TCP
-            //tcpPort = TEMP_TCP_PORT;
-            InetSocketAddress socketAddress = new InetSocketAddress(TEMP_HOST_NAME, tcpPort);
-            tcpSocket = new ServerSocket(tcpPort);
-
-
-            // Thread handling
-            threadPool = Executors.newCachedThreadPool();
-            threadPool.submit(server.new TCPServerRunnable());
-        } catch (IOException e) {
-            System.err.println("IOException in Server.main");
-            e.printStackTrace();
-        }
     }
 
     /**
