@@ -14,13 +14,18 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class Server {
 
+    // TODO: Implement timestamps
+    // TODO: Implement lamport request
+    // TODO: Implement lamport release
+    // TODO: Use lamport's mutex to phase out synchronized methods
+
     private static HashMap<String, Integer> inventory;
     private static AtomicInteger orderCount = new AtomicInteger(1); // Order IDs count up from 1
     private static ArrayList<Order> orderHistory = new ArrayList<Order>();
     private static ServerSocket tcpSocket = null;
     private static ExecutorService threadPool = null;
 
-    private InetSocketAddress[] serverList;
+    private static InetSocketAddress[] serverList;
     private int serversRunning;
     private int ID;
 
@@ -41,14 +46,12 @@ public class Server {
         System.out.println("[DEBUG] numServer: " + numServer);
         System.out.println("[DEBUG] inventory path: " + inventoryPath);
 
-        Server thisServer = new Server(numServer, myID);
-        thisServer.serverList = new InetSocketAddress[numServer];
+        serverList = new InetSocketAddress[numServer];
 
         for (int i = 0; i < numServer; i++) {
-            // TODO: parse inputs to get the ips and ports of servers
             String[] str = sc.nextLine().trim().split(":");
             System.out.println("address for server " + i + ": " + str[0]);
-            thisServer.serverList[i] = new InetSocketAddress(str[0], Integer.parseInt(str[1]));
+            serverList[i] = new InetSocketAddress(str[0], Integer.parseInt(str[1]));
         }
 
         // parse the inventory file
@@ -56,6 +59,15 @@ public class Server {
         
         // for debugging
         printInventory();
+
+        try {
+            Server thisServer = new Server(numServer, myID);
+            ServerSocket sock = new ServerSocket(serverList[thisServer.ID].getPort());
+
+            // TODO: Use a runnable to handle connections
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
 
     }
 
