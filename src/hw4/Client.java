@@ -14,7 +14,8 @@ public class Client {
     private Socket tcpSocket;
     private DataOutputStream outToServer;
     private DataInputStream inFromServer;
-    private int currentServ = 0;
+    private int currentServIndex = 0;
+    private boolean connected = false;
 
     public static final String CLIENT_TAG = "cli";
 
@@ -72,12 +73,14 @@ public class Client {
 
         try {
             setUpTCPSocket(servers, numServers);
-            outToServer.writeUTF(command);
-            System.out.println("Issued Command: " + command);
-            outToServer.flush();
+            if (connected) {
+                outToServer.writeUTF(command);
+                System.out.println("Issued Command: " + command);
+                outToServer.flush();
 
-            response = inFromServer.readUTF();
-            tcpSocket.close();
+                response = inFromServer.readUTF();
+                tcpSocket.close();
+            }
 
         } catch (IOException e) {
             System.err.println("IOException in Client.issueCommand: " + e);
@@ -87,31 +90,31 @@ public class Client {
     }
 
     private void setUpTCPSocket(InetSocketAddress[] servers, int numServers) {
+        connected = false;
 
-        if (currentServ >= numServers) {
+        if (currentServIndex >= numServers) {
             System.err.println("All servers are currently down.");
-            return;
-        }
-
-        InetSocketAddress currentServer;
-        for (int i = currentServ; i < numServers; i++) {
-            tcpSocket = new Socket();
-            currentServer = servers[i];
-            try {
-                /* handle TCP connection to server */
-                tcpSocket.setSoTimeout(100);
+        } else {
+            InetSocketAddress currentServer;
+            for (int i = currentServIndex; i < numServers; i++) {
+                tcpSocket = new Socket();
+                currentServer = servers[i];
                 try {
+                /* handle TCP connection to server */
+                    tcpSocket.setSoTimeout(100);
                     tcpSocket.connect(currentServer);
                     outToServer = new DataOutputStream(tcpSocket.getOutputStream());
                     inFromServer = new DataInputStream(tcpSocket.getInputStream());
-                    break;
+                    connected = true;
+                    return;
                 } catch (SocketTimeoutException e) {
-                    currentServ++; //TODO: not sure if this works
+                    System.err.println("SocketTimeoutException in Client.setUpTCPSocket finding server:");
+                    e.printStackTrace();
+                    currentServIndex++;
+                } catch (IOException e) {
+                    System.err.println("IOException in Client.setUpTCPSocket finding server:");
                     e.printStackTrace();
                 }
-
-            } catch (IOException e) {
-                System.err.println("IOException in Client.setUpTCPSocket finding server: " + e);
             }
         }
     }
