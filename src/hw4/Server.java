@@ -28,6 +28,8 @@ public class Server {
     private int serversRunning;
     private int ID;
 
+    public static final String TAG = "serv";
+
     public Server(int serversRunning, int ID) {
         this.serversRunning = serversRunning;
         this.ID = ID;
@@ -305,10 +307,15 @@ public class Server {
 
     // NEW FOR HW4
     // TODO: implement logical clock
-    public synchronized void sendRequest(String command) {
-        /* MESSAGE FORMAT: "<type> <id> <command>" */
-        String message = "request " + Integer.toString(ID) + " " + command;
 
+    /**
+     * Sends a message to all running servers
+     * Message sent has form: "serv <type> <id> <command>"
+     * @param id        ID of server sending command
+     * @param command   Has form: "<type> <command>"
+     */
+    public void notifyServers(String type, int id, int clock, String command) {
+        String message = TAG + type + " " + Integer.toString(id) + " " + Integer.toString(clock) + " " + command;
         for (Map.Entry<Integer, InetSocketAddress> entry : serverList.entrySet()) {
             if (entry.getKey() != this.ID) {
                 Socket sock = new Socket();
@@ -325,6 +332,10 @@ public class Server {
                 }
             }
         }
+    }
+
+    public synchronized void sendRequest(String command) {
+        notifyServers("request", this.ID, 0, command);
 
         // Wait for acknowledgements
         int numAcks = 1;
@@ -339,25 +350,8 @@ public class Server {
 
     public synchronized String releaseAndGetResponse(String command) {
         String response = handleCommand(command);
-        /* MESSAGE FORMAT: "<type> <id> <command>" */
-        String message = "release " + Integer.toString(ID) + " " + command;
-
-        for (Map.Entry<Integer, InetSocketAddress> entry : serverList.entrySet()) {
-            if (entry.getKey() != this.ID) {
-                Socket sock = new Socket();
-                try {
-                    sock.connect(entry.getValue(), 100);
-                    DataOutputStream outToServer = new DataOutputStream(sock.getOutputStream());
-
-                    outToServer.writeUTF(message);
-                    outToServer.flush();
-                } catch (SocketTimeoutException e) {
-                    e.printStackTrace();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-        }
+        notifyServers("release", this.ID, 0, command);
+        notifyAll();
 
         return response;
     }

@@ -36,13 +36,18 @@ public class ServerCommandInterpreter implements Runnable {
         }
     }
 
+    /**
+     * Interprets a command received from either a server or client node
+     * Input command only has params if its from a server node
+     * @param command   Has form: "<source> <params> <command>"
+     */
     private void interpretCommand(String command) {
         String source = command.toLowerCase().trim().split(" ")[0];
         String body = command.substring(command.indexOf(" ") + 1);
         String response = null;
 
         //TODO: if source == client, call server.handleClientCommand
-        if (source.equals(Client.CLIENT_TAG)) {
+        if (source.equals(Client.TAG)) {
             server.sendRequest(body);
             response = server.releaseAndGetResponse(body);
             try {
@@ -55,6 +60,8 @@ public class ServerCommandInterpreter implements Runnable {
         }
 
         //TODO: if source == server, call server.handleServerCommand
+        else if (source.equals(Server.TAG)) {
 
+        }
     }
 }

@@ -17,7 +17,7 @@ public class Client {
     private int currentServIndex = 0;
     private boolean connected = false;
 
-    public static final String CLIENT_TAG = "cli";
+    public static final String TAG = "cli";
 
     public static void main (String[] args) {
 
@@ -39,25 +39,25 @@ public class Client {
             String response = null;
 
             if (tokens[0].equals("purchase")) {
-                String command = CLIENT_TAG + " " + tokens[0] + " " + tokens[1] + " " + tokens[2] + " " + tokens[3];
+                String command = TAG + " " + tokens[0] + " " + tokens[1] + " " + tokens[2] + " " + tokens[3];
                 response = client.issueCommand(command, servers, numServer);
                 System.out.println("Response received: \n" + response);
             }
 
             else if (tokens[0].equals("cancel")) {
-                String command = CLIENT_TAG + " " + tokens[0] + " " + tokens[1];
+                String command = TAG + " " + tokens[0] + " " + tokens[1];
                 response = client.issueCommand(command, servers, numServer);
                 System.out.println("Response received: \n" + response);
             }
 
             else if (tokens[0].equals("search")) {
-                String command = CLIENT_TAG + " " + tokens[0] + " " + tokens[1];
+                String command = TAG + " " + tokens[0] + " " + tokens[1];
                 response = client.issueCommand(command, servers, numServer);
                 System.out.println("Response received: \n" + response);
             }
 
             else if (tokens[0].equals("list")) {
-                String command = CLIENT_TAG + " " + tokens[0];
+                String command = TAG + " " + tokens[0];
                 response = client.issueCommand(command, servers, numServer);
                 System.out.println("Response received: \n" + response);
             }
@@ -68,6 +68,13 @@ public class Client {
         }
     }
 
+    /**
+     * Sends a command to the first running server
+     * @param command       Command in form "cli <command>"
+     * @param servers       List of all server addresses
+     * @param numServers    The number of servers
+     * @return              Response from the server
+     */
     private String issueCommand(String command, InetSocketAddress[] servers, int numServers) {
         String response = null;
 
@@ -89,6 +96,11 @@ public class Client {
         return response;
     }
 
+    /**
+     * Attempts to connect to the first running server node
+     * @param servers       List of all server addresses
+     * @param numServers    Number of total servers
+     */
     private void setUpTCPSocket(InetSocketAddress[] servers, int numServers) {
         connected = false;
 
