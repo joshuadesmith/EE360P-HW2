@@ -24,7 +24,6 @@ public class Client {
         int currentServ = 0;
 
         for (int i = 0; i < numServer; i++) {
-            // TODO: parse inputs to get the ips and ports of servers
             String ip_port[] = sc.nextLine().trim().split(":");
             servers[i] = new InetSocketAddress(ip_port[0], Integer.parseInt(ip_port[1]));
         }
@@ -38,24 +37,24 @@ public class Client {
 
             if (tokens[0].equals("purchase")) {
                 String command = tokens[0] + " " + tokens[1] + " " + tokens[2] + " " + tokens[3];
-                response = client.issueCommand(command, servers, numServer);
+                response = client.issueCommand(command, servers, numServer, currentServ);
                 System.out.println("Response received: \n" + response);
             }
 
             else if (tokens[0].equals("cancel")) {
                 String command = tokens[0] + " " + tokens[1];
-                response = client.issueCommand(command, servers, numServer);
+                response = client.issueCommand(command, servers, numServer, currentServ);
                 System.out.println("Response received: \n" + response);
             }
 
             else if (tokens[0].equals("search")) {
                 String command = tokens[0] + " " + tokens[1];
-                response = client.issueCommand(command, servers, numServer);
+                response = client.issueCommand(command, servers, numServer, currentServ);
                 System.out.println("Response received: \n" + response);
             }
 
             else if (tokens[0].equals("list")) {
-                response = client.issueCommand(tokens[0], servers, numServer);
+                response = client.issueCommand(tokens[0], servers, numServer, currentServ);
                 System.out.println("Response received: \n" + response);
             }
 
@@ -65,11 +64,11 @@ public class Client {
         }
     }
 
-    private String issueCommand(String command, InetSocketAddress[] servers, int numServers) {
+    private String issueCommand(String command, InetSocketAddress[] servers, int numServers, int currentServ) {
         String response = null;
 
         try {
-            setUpTCPSocket(servers, numServers);
+            setUpTCPSocket(servers, numServers, currentServ);
             outToServer.writeUTF(command);
             System.out.println("Issued Command: " + command);
             outToServer.flush();
@@ -84,27 +83,30 @@ public class Client {
         return response;
     }
 
-    private void setUpTCPSocket(InetSocketAddress[] servers, int numServers) {
-        boolean server_found = false;
+    private void setUpTCPSocket(InetSocketAddress[] servers, int numServers, int currentServ) {
+
+        if (currentServ >= numServers) {
+            System.err.println("All servers are currently down.");
+            return;
+        }
+
         InetSocketAddress currentServer;
-        int index = 0;
-        while(!server_found){
+        for (int i = currentServ; i < numServers; i++) {
             tcpSocket = new Socket();
-            currentServer = servers[index];
+            currentServer = servers[i];
             try {
                 /* handle TCP connection to server */
                 tcpSocket.setSoTimeout(100);
                 try {
                     tcpSocket.connect(currentServer);
-                } catch (Exception e) {
+                    outToServer = new DataOutputStream(tcpSocket.getOutputStream());
+                    inFromServer = new DataInputStream(tcpSocket.getInputStream());
+                } catch (SocketTimeoutException e) {
                     // TODO: check how we handle running out of servers to check
-                    index = (index + 1) % numServers;
-                    continue;
+                    e.printStackTrace();
                 }
-                outToServer = new DataOutputStream(tcpSocket.getOutputStream());
-                inFromServer = new DataInputStream(tcpSocket.getInputStream());
-                server_found = true;
-            }catch(IOException e){
+
+            } catch (IOException e) {
                 System.err.println("IOException in Client.setUpTCPSocket finding server: " + e);
             }
         }
