@@ -15,67 +15,69 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class Server {
 
-    // TODO: Implement timestamps
-    // TODO: Implement lamport request
-    // TODO: Implement lamport release
-    // TODO: Use lamport's mutex to phase out synchronized methods
+    private static final int TEMP_TCP_PORT = 2018;
+    private static final int TEMP_UDP_PORT = 4036;
+    private static final int DATA_BUFFER_SIZE = 512;
+    private static final String TEMP_HOST_NAME = "localhost";
+    private static final String TEMP_FILE_NAME = "inventory.txt";
 
     private static HashMap<String, Integer> inventory;
     private static AtomicInteger orderCount = new AtomicInteger(1); // Order IDs count up from 1
     private static ArrayList<Order> orderHistory = new ArrayList<Order>();
+
     private static ServerSocket tcpSocket = null;
+    private static DatagramSocket udpSocket = null;
     private static ExecutorService threadPool = null;
 
-    private static InetSocketAddress[] serverList;
-    private static boolean[] serverStatus;
-    private int serversRunning;
-    private int ID;
-
-    public Server(int serversRunning, int ID) {
-        this.serversRunning = serversRunning;
-        this.ID = ID;
-    }
+    private int tcpPortNum;
+    private int udpPortNum;
 
     public static void main (String[] args) {
+        int tcpPort;
+        int udpPort;
 
-        Scanner sc = new Scanner(System.in);
-        int myID = sc.nextInt();
-        int numServer = sc.nextInt();
-        String inventoryPath = sc.next();
-        sc.nextLine();
 
-        System.out.println("[DEBUG] my id: " + myID);
-        System.out.println("[DEBUG] numServer: " + numServer);
-        System.out.println("[DEBUG] inventory path: " + inventoryPath);
+        if (args.length != 3) {
+            System.out.println("ERROR: Provide 3 arguments");
+            System.out.println("\t(1) <tcpPort>: the port number for TCP connection");
+            System.out.println("\t(2) <udpPort>: the port number for UDP connection");
+            System.out.println("\t(3) <file>: the file of inventory");
 
-        serverList = new InetSocketAddress[numServer];
-        serverStatus = new boolean[numServer];
-
-        for (int i = 0; i < numServer; i++) {
-            String[] str = sc.nextLine().trim().split(":");
-            System.out.println("address for server " + i + ": " + str[0]);
-            serverList[i] = new InetSocketAddress(str[0], Integer.parseInt(str[1]));
-            serverStatus[i] = true;
+            System.exit(-1);
         }
+        tcpPort = Integer.parseInt(args[0]);
+        udpPort = Integer.parseInt(args[1]);
+        String fileName = args[2];
+
+        Server server = new Server();
+        server.tcpPortNum = tcpPort;
+        server.udpPortNum = udpPort;
 
         // parse the inventory file
-        initializeInventory(inventoryPath);
-        
+        initializeInventory(TEMP_FILE_NAME);
+
         // for debugging
         printInventory();
 
-        Server thisServer = new Server(numServer, myID);
-        threadPool = Executors.newCachedThreadPool();
-
         try {
-            ServerSocket serverSocket = new ServerSocket(serverList[thisServer.ID].getPort());
+            // For TCP
+            //tcpPort = TEMP_TCP_PORT;
+            InetSocketAddress socketAddress = new InetSocketAddress(TEMP_HOST_NAME, tcpPort);
+            tcpSocket = new ServerSocket(tcpPort);
 
-            // TODO: Use a runnable to handle connections
-            threadPool.submit(thisServer.new TCPServerRunnable(thisServer));
+            // For UDP
+            //udpPort = TEMP_UDP_PORT;
+            udpSocket = new DatagramSocket(udpPort);
+
+
+            // Thread handling
+            threadPool = Executors.newCachedThreadPool();
+            threadPool.submit(server.new TCPServerRunnable());
+            threadPool.submit(server.new UDPServerRunnable());
         } catch (IOException e) {
+            System.err.println("IOException in Server.main");
             e.printStackTrace();
         }
-
     }
 
     /**
@@ -88,20 +90,23 @@ public class Server {
 
         String response = null;
 
+        if (tokens[0].toLowerCase().equals("setmode")) {
 
-        if (tokens[1].toLowerCase().equals("purchase")) {
-            response = processPurchase(new Order(tokens[2], tokens[3], Integer.parseInt(tokens[4])));
         }
 
-        else if (tokens[1].toLowerCase().equals("cancel")) {
-            response = cancelOrder(Integer.parseInt(tokens[2]));
+        else if (tokens[0].toLowerCase().equals("purchase")) {
+            response = processPurchase(new Order(tokens[1], tokens[2], Integer.parseInt(tokens[3])));
         }
 
-        else if (tokens[1].toLowerCase().equals("search")) {
-            response = searchOrders(tokens[2]);
+        else if (tokens[0].toLowerCase().equals("cancel")) {
+            response = cancelOrder(Integer.parseInt(tokens[1]));
         }
 
-        else if (tokens[1].toLowerCase().equals("list")) {
+        else if (tokens[0].toLowerCase().equals("search")) {
+            response = searchOrders(tokens[1]);
+        }
+
+        else if (tokens[0].toLowerCase().equals("list")) {
             response = listInventory();
         }
 
@@ -136,7 +141,7 @@ public class Server {
             }
             // For debugging
             System.out.println("Finished initializing inventory.");
-            
+
             if (inventory.size() == 0) {
                 System.out.println("Warning: Inventory is empty");
             }
@@ -305,18 +310,12 @@ public class Server {
      * Runnable that constantly checks for TCP connections
      */
     private class TCPServerRunnable implements Runnable {
-        Server serv;
-
-        TCPServerRunnable(Server serv) {
-            this.serv = serv;
-        }
-
         @Override
         public void run() {
             try {
                 Socket s = null;
                 while ((s = tcpSocket.accept()) != null) {
-                    threadPool.submit(new TCPCommandHandler(s, serv));
+                    threadPool.submit(new TCPCommandHandler(s));
                 }
                 System.out.println("TCP Server Runnable ending.");
             } catch (IOException e) {
@@ -330,11 +329,9 @@ public class Server {
      */
     private class TCPCommandHandler implements Runnable {
         Socket clientSocket;
-        Server serv;
 
-        TCPCommandHandler(Socket s, Server serv) {
+        TCPCommandHandler(Socket s) {
             this.clientSocket = s;
-            this.serv = serv;
         }
 
         @Override
@@ -345,21 +342,7 @@ public class Server {
                 String command = inFromClient.readUTF();
                 System.out.println("Received command via TCP: " + command);
 
-                String response = null;
-                String type = command.toLowerCase().trim().split(" ")[0];
-                command = command.substring(2); // trim off the "c " or "s "
-
-                // Command from client
-                if (type.equals("c")) {
-                    // TODO: Handle critical section before processing response
-                    response = handleCommand(command);
-                }
-
-                // Message from servers
-                else if (type.equals("s")) {
-                    // TODO: Handle messages to other servers
-                }
-
+                String response = handleCommand(command);
                 outToClient.writeUTF(response);
                 outToClient.flush();
 
@@ -369,28 +352,60 @@ public class Server {
         }
     }
 
-    // NEW FOR HW4
-    // TODO: implement logical clock
-    public synchronized void sendRequest(String command, int id) {
-        /* MESSAGE FORMAT: "<type> <id> <command> */
-        String message = "request " + Integer.toString(id) + " " + command;
+    /**
+     * Runnable that constantly checks for UDP packets
+     */
+    private class UDPServerRunnable implements Runnable {
+        private boolean keepChecking = true;
 
-        for (InetSocketAddress server : serverList) {
-            Socket sock = new Socket();
-            try {
-                sock.connect(server, 100);
-                DataOutputStream outToServer = new DataOutputStream(sock.getOutputStream());
+        @Override
+        public void run() {
+            while (keepChecking) {
+                byte[] buffer = new byte[DATA_BUFFER_SIZE];
+                DatagramPacket recPacket = new DatagramPacket(buffer, buffer.length);
 
-                outToServer.writeUTF(message);
-                outToServer.flush();
-            } catch (IOException e) {
-                e.printStackTrace();
+                try {
+                    udpSocket.receive(recPacket);
+                    threadPool.submit(new UDPCommandHandler(recPacket));
+                } catch (IOException e) {
+                    System.err.println("IOException in UDPServerRunnable.run: " + e);
+                    keepChecking = false;
+                }
             }
         }
     }
 
+    /**
+     * Handles a single command sent via Datagram Packet
+     */
+    private class UDPCommandHandler implements Runnable {
+        DatagramPacket clientPacket;
 
+        UDPCommandHandler(DatagramPacket packet) {
+            this.clientPacket = packet;
+        }
 
+        @Override
+        public void run() {
+            String command = null;
+            String response = null;
+
+            try {
+                command = new String(clientPacket.getData(), "UTF-8");
+                System.out.println("Received command via UDP: " + command);
+                response = handleCommand(command);
+
+                byte[] buf = response.getBytes();
+                DatagramPacket responsePacket = new DatagramPacket(buf, buf.length, clientPacket.getAddress(), clientPacket.getPort());
+                udpSocket.send(responsePacket);
+
+            } catch (UnsupportedEncodingException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                System.err.println("IOException in UDPCommandHandler.run: " + e);
+            }
+        }
+    }
 
     /**
      * Contains information for an order made
