@@ -15,6 +15,8 @@ public class Client {
     private DataOutputStream outToServer;
     private DataInputStream inFromServer;
 
+    public static final String CLIENT_TAG = "cli";
+
     public static void main (String[] args) {
 
         Scanner sc = new Scanner(System.in);
@@ -36,25 +38,26 @@ public class Client {
             String response = null;
 
             if (tokens[0].equals("purchase")) {
-                String command = tokens[0] + " " + tokens[1] + " " + tokens[2] + " " + tokens[3];
+                String command = CLIENT_TAG + " " + tokens[0] + " " + tokens[1] + " " + tokens[2] + " " + tokens[3];
                 response = client.issueCommand(command, servers, numServer, currentServ);
                 System.out.println("Response received: \n" + response);
             }
 
             else if (tokens[0].equals("cancel")) {
-                String command = tokens[0] + " " + tokens[1];
+                String command = CLIENT_TAG + " " + tokens[0] + " " + tokens[1];
                 response = client.issueCommand(command, servers, numServer, currentServ);
                 System.out.println("Response received: \n" + response);
             }
 
             else if (tokens[0].equals("search")) {
-                String command = tokens[0] + " " + tokens[1];
+                String command = CLIENT_TAG + " " + tokens[0] + " " + tokens[1];
                 response = client.issueCommand(command, servers, numServer, currentServ);
                 System.out.println("Response received: \n" + response);
             }
 
             else if (tokens[0].equals("list")) {
-                response = client.issueCommand(tokens[0], servers, numServer, currentServ);
+                String command = CLIENT_TAG + " " + tokens[0];
+                response = client.issueCommand(command, servers, numServer, currentServ);
                 System.out.println("Response received: \n" + response);
             }
 
@@ -101,8 +104,8 @@ public class Client {
                     tcpSocket.connect(currentServer);
                     outToServer = new DataOutputStream(tcpSocket.getOutputStream());
                     inFromServer = new DataInputStream(tcpSocket.getInputStream());
+                    break;
                 } catch (SocketTimeoutException e) {
-                    // TODO: check how we handle running out of servers to check
                     e.printStackTrace();
                 }
 
