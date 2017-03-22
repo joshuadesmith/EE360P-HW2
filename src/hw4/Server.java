@@ -2,10 +2,7 @@ package hw4;
 
 import java.io.*;
 import java.net.*;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Scanner;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -26,7 +23,7 @@ public class Server {
     private static ServerSocket tcpSocket = null;
     private static ExecutorService threadPool = null;
 
-    private static InetSocketAddress[] serverList;
+    private static HashMap<Integer, InetSocketAddress> serverList;
     private static boolean[] serverStatus;
     private int serversRunning;
     private int ID;
@@ -48,13 +45,13 @@ public class Server {
         System.out.println("[DEBUG] numServer: " + numServer);
         System.out.println("[DEBUG] inventory path: " + inventoryPath);
 
-        serverList = new InetSocketAddress[numServer];
+        serverList = new HashMap<Integer, InetSocketAddress>();
         serverStatus = new boolean[numServer];
 
         for (int i = 0; i < numServer; i++) {
             String[] str = sc.nextLine().trim().split(":");
             System.out.println("address for server " + i + ": " + str[0]);
-            serverList[i] = new InetSocketAddress(str[0], Integer.parseInt(str[1]));
+            serverList.put(i + 1, new InetSocketAddress(str[0], Integer.parseInt(str[1])));
             serverStatus[i] = true;
         }
 
@@ -65,13 +62,17 @@ public class Server {
         printInventory();
 
         Server thisServer = new Server(numServer, myID);
+        thisServer.serversRunning = numServer;
         threadPool = Executors.newCachedThreadPool();
 
         try {
-            ServerSocket serverSocket = new ServerSocket(serverList[thisServer.ID].getPort());
+            ServerSocket serverSocket = new ServerSocket(serverList.get(myID).getPort());
 
-            // TODO: Use a runnable to handle connections
-            threadPool.submit(thisServer.new TCPServerRunnable(thisServer));
+            Socket s = null;
+            while ((s = serverSocket.accept()) != null) {
+                threadPool.submit(new ServerCommandInterpreter(thisServer, s));
+            }
+            System.out.println("TCP Server Runnable ending.");
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -301,95 +302,65 @@ public class Server {
         return result;
     }
 
-    /**
-     * Runnable that constantly checks for TCP connections
-     */
-    private class TCPServerRunnable implements Runnable {
-        Server serv;
-
-        TCPServerRunnable(Server serv) {
-            this.serv = serv;
-        }
-
-        @Override
-        public void run() {
-            try {
-                Socket s = null;
-                while ((s = tcpSocket.accept()) != null) {
-                    threadPool.submit(new TCPCommandHandler(s, serv));
-                }
-                System.out.println("TCP Server Runnable ending.");
-            } catch (IOException e) {
-                System.err.println("IOException in TCPServerRunnable.run");
-            }
-        }
-    }
-
-    /**
-     * Handles a single command via TCP protocol
-     */
-    private class TCPCommandHandler implements Runnable {
-        Socket clientSocket;
-        Server serv;
-
-        TCPCommandHandler(Socket s, Server serv) {
-            this.clientSocket = s;
-            this.serv = serv;
-        }
-
-        @Override
-        public void run() {
-            try {
-                DataInputStream inFromClient = new DataInputStream(clientSocket.getInputStream());
-                DataOutputStream outToClient = new DataOutputStream(clientSocket.getOutputStream());
-                String command = inFromClient.readUTF();
-                System.out.println("Received command via TCP: " + command);
-
-                String response = null;
-                String type = command.toLowerCase().trim().split(" ")[0];
-                command = command.substring(2); // trim off the "c " or "s "
-
-                // Command from client
-                if (type.equals("c")) {
-                    // TODO: Handle critical section before processing response
-                    response = handleCommand(command);
-                }
-
-                // Message from servers
-                else if (type.equals("s")) {
-                    // TODO: Handle messages to other servers
-                }
-
-                outToClient.writeUTF(response);
-                outToClient.flush();
-
-            } catch (IOException e) {
-                System.err.println("IOException in TCPCommandHandler.run");
-            }
-        }
-    }
 
     // NEW FOR HW4
     // TODO: implement logical clock
-    public synchronized void sendRequest(String command, int id) {
-        /* MESSAGE FORMAT: "<type> <id> <command> */
-        String message = "request " + Integer.toString(id) + " " + command;
+    public synchronized void sendRequest(String command) {
+        /* MESSAGE FORMAT: "<type> <id> <command>" */
+        String message = "request " + Integer.toString(ID) + " " + command;
 
-        for (InetSocketAddress server : serverList) {
-            Socket sock = new Socket();
-            try {
-                sock.connect(server, 100);
-                DataOutputStream outToServer = new DataOutputStream(sock.getOutputStream());
+        for (Map.Entry<Integer, InetSocketAddress> entry : serverList.entrySet()) {
+            if (entry.getKey() != this.ID) {
+                Socket sock = new Socket();
+                try {
+                    sock.connect(entry.getValue(), 100);
+                    DataOutputStream outToServer = new DataOutputStream(sock.getOutputStream());
 
-                outToServer.writeUTF(message);
-                outToServer.flush();
-            } catch (IOException e) {
-                e.printStackTrace();
+                    outToServer.writeUTF(message);
+                    outToServer.flush();
+                } catch (SocketTimeoutException e) {
+                    e.printStackTrace();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             }
+        }
+
+        // Wait for acknowledgements
+        int numAcks = 1;
+        try {
+            while (numAcks < serverList.size()) {
+                wait();
+            }
+        } catch (InterruptedException e) {
+            e.printStackTrace();
         }
     }
 
+    public synchronized String releaseAndGetResponse(String command) {
+        String response = handleCommand(command);
+        /* MESSAGE FORMAT: "<type> <id> <command>" */
+        String message = "release " + Integer.toString(ID) + " " + command;
 
+        for (Map.Entry<Integer, InetSocketAddress> entry : serverList.entrySet()) {
+            if (entry.getKey() != this.ID) {
+                Socket sock = new Socket();
+                try {
+                    sock.connect(entry.getValue(), 100);
+                    DataOutputStream outToServer = new DataOutputStream(sock.getOutputStream());
+
+                    outToServer.writeUTF(message);
+                    outToServer.flush();
+                } catch (SocketTimeoutException e) {
+                    e.printStackTrace();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+
+        return response;
+    }
 
 
     /**
