@@ -25,13 +25,12 @@ public class Server {
 
     private static HashMap<Integer, InetSocketAddress> serverList;
     private static boolean[] serverStatus;
-    private int serversRunning;
+    private int numAcks = 0;
     private int ID;
 
     public static final String TAG = "serv";
 
     public Server(int serversRunning, int ID) {
-        this.serversRunning = serversRunning;
         this.ID = ID;
     }
 
@@ -64,7 +63,6 @@ public class Server {
         printInventory();
 
         Server thisServer = new Server(numServer, myID);
-        thisServer.serversRunning = numServer;
         threadPool = Executors.newCachedThreadPool();
 
         try {
@@ -315,7 +313,7 @@ public class Server {
      * @param command   Has form: "<type> <command>"
      */
     public void notifyServers(String type, int id, int clock, String command) {
-        String message = TAG + type + " " + Integer.toString(id) + " " + Integer.toString(clock) + " " + command;
+        String message = TAG + " " + type + " " + Integer.toString(id) + " " + Integer.toString(clock) + " " + command;
         for (Map.Entry<Integer, InetSocketAddress> entry : serverList.entrySet()) {
             if (entry.getKey() != this.ID) {
                 Socket sock = new Socket();
@@ -338,9 +336,9 @@ public class Server {
         notifyServers("request", this.ID, 0, command);
 
         // Wait for acknowledgements
-        int numAcks = 1;
+        numAcks = 0;
         try {
-            while (numAcks < serverList.size()) {
+            while (numAcks < serverList.size() - 1) {
                 wait();
             }
         } catch (InterruptedException e) {
@@ -354,6 +352,28 @@ public class Server {
         notifyAll();
 
         return response;
+    }
+
+    public synchronized void processCommandFromServerNode(String command) {
+        String[] tokens = command.split(" ");
+        StringBuilder builder = new StringBuilder();
+        for (int i = 4; i < tokens.length; i++) {
+            builder.append(tokens[i]);
+        }
+
+        if (tokens[0].equals("request")) {
+            notifyServers("acknowledge", this.ID, 0, builder.toString());
+        }
+
+        else if (tokens[0].equals("acknowledge")) {
+            numAcks++;
+        }
+
+        else if (tokens[0].equals("release")) {
+            handleCommand(builder.toString());
+        }
+
+        notifyAll();
     }
 
 

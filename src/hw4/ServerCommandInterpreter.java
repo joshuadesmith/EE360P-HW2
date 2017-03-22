@@ -39,6 +39,7 @@ public class ServerCommandInterpreter implements Runnable {
     /**
      * Interprets a command received from either a server or client node
      * Input command only has params if its from a server node
+     * Also removes source token from command string
      * @param command   Has form: "<source> <params> <command>"
      */
     private void interpretCommand(String command) {
@@ -61,7 +62,7 @@ public class ServerCommandInterpreter implements Runnable {
 
         //TODO: if source == server, call server.handleServerCommand
         else if (source.equals(Server.TAG)) {
-
+            server.processCommandFromServerNode(body);
         }
     }
 }

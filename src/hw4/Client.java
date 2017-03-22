@@ -26,6 +26,7 @@ public class Client {
 
         InetSocketAddress[] servers = new InetSocketAddress[numServer];
 
+        sc.nextLine();
         for (int i = 0; i < numServer; i++) {
             String ip_port[] = sc.nextLine().trim().split(":");
             servers[i] = new InetSocketAddress(ip_port[0], Integer.parseInt(ip_port[1]));
