@@ -14,6 +14,7 @@ public class Client {
     private Socket tcpSocket;
     private DataOutputStream outToServer;
     private DataInputStream inFromServer;
+    private int currentServ = 0;
 
     public static final String CLIENT_TAG = "cli";
 
@@ -23,7 +24,6 @@ public class Client {
         int numServer = sc.nextInt();
 
         InetSocketAddress[] servers = new InetSocketAddress[numServer];
-        int currentServ = 0;
 
         for (int i = 0; i < numServer; i++) {
             String ip_port[] = sc.nextLine().trim().split(":");
@@ -39,25 +39,25 @@ public class Client {
 
             if (tokens[0].equals("purchase")) {
                 String command = CLIENT_TAG + " " + tokens[0] + " " + tokens[1] + " " + tokens[2] + " " + tokens[3];
-                response = client.issueCommand(command, servers, numServer, currentServ);
+                response = client.issueCommand(command, servers, numServer);
                 System.out.println("Response received: \n" + response);
             }
 
             else if (tokens[0].equals("cancel")) {
                 String command = CLIENT_TAG + " " + tokens[0] + " " + tokens[1];
-                response = client.issueCommand(command, servers, numServer, currentServ);
+                response = client.issueCommand(command, servers, numServer);
                 System.out.println("Response received: \n" + response);
             }
 
             else if (tokens[0].equals("search")) {
                 String command = CLIENT_TAG + " " + tokens[0] + " " + tokens[1];
-                response = client.issueCommand(command, servers, numServer, currentServ);
+                response = client.issueCommand(command, servers, numServer);
                 System.out.println("Response received: \n" + response);
             }
 
             else if (tokens[0].equals("list")) {
                 String command = CLIENT_TAG + " " + tokens[0];
-                response = client.issueCommand(command, servers, numServer, currentServ);
+                response = client.issueCommand(command, servers, numServer);
                 System.out.println("Response received: \n" + response);
             }
 
@@ -67,11 +67,11 @@ public class Client {
         }
     }
 
-    private String issueCommand(String command, InetSocketAddress[] servers, int numServers, int currentServ) {
+    private String issueCommand(String command, InetSocketAddress[] servers, int numServers) {
         String response = null;
 
         try {
-            setUpTCPSocket(servers, numServers, currentServ);
+            setUpTCPSocket(servers, numServers);
             outToServer.writeUTF(command);
             System.out.println("Issued Command: " + command);
             outToServer.flush();
@@ -86,7 +86,7 @@ public class Client {
         return response;
     }
 
-    private void setUpTCPSocket(InetSocketAddress[] servers, int numServers, int currentServ) {
+    private void setUpTCPSocket(InetSocketAddress[] servers, int numServers) {
 
         if (currentServ >= numServers) {
             System.err.println("All servers are currently down.");
@@ -106,6 +106,7 @@ public class Client {
                     inFromServer = new DataInputStream(tcpSocket.getInputStream());
                     break;
                 } catch (SocketTimeoutException e) {
+                    currentServ++; //TODO: not sure if this works
                     e.printStackTrace();
                 }
 
