@@ -128,7 +128,7 @@ public class Client {
 
         } catch (IOException e) {
             System.err.println("IOException in Client.issueCommand: ");
-            e.printStackTrace();
+            System.err.println("Could not connect to Server " + currentServIndex);
         }
 
         return response;
@@ -161,13 +161,11 @@ public class Client {
                     return;
                 } catch (SocketTimeoutException e) {
                     System.err.println("SocketTimeoutException in Client.setUpTCPSocket finding server:");
-                    e.printStackTrace();
-                    //currentServIndex++;
+                    System.err.println("Could not connect to Server " + i);
                     connected = false;
                 } catch (IOException e) {
                     System.err.println("IOException in Client.setUpTCPSocket finding server:");
-                    e.printStackTrace();
-                    //currentServIndex++;
+                    System.err.println("Could not connect to Server " + i);
                     connected = false;
                 }
             }

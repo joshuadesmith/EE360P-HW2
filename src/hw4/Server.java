@@ -103,7 +103,6 @@ public class Server {
      * @return          String that contains the server's response
      */
     private String handleCommand(String command) {
-        System.out.println("[DEBUG]: Handling command: " + command);
         String[] tokens = command.trim().split(" ");
 
         String response = null;
@@ -129,7 +128,7 @@ public class Server {
             response = "Invalid Command: " + command;
         }
 
-        System.out.println("[DEBUG]: Executed command \"" + command + "\"");
+        System.out.println("[DEBUG]: Executed command \"" + command + "\"\n");
         return response;
     }
 
@@ -366,10 +365,9 @@ public class Server {
         DataOutputStream outToServer;
 
         for (int i = 1; i <= numServers; i++) {
-            if (serverList.size() < 2) {
-                System.out.println("[DEBUG]: Only one server node is running");
-                lastServer = true;
-            }
+
+            // Check to see whether this server node is the last one running
+            lastServer = (serverList.size() < 2);
 
             if (i != this.ID && serverList.containsKey(i)) {
                 System.out.println("[DEBUG]: Attempting to connect to Server " + i);
@@ -438,7 +436,7 @@ public class Server {
                 e.printStackTrace();
             }
         } else {
-            System.out.println("[DEBUG]: Server " + ID + " is the last running server");
+            System.out.println("[DEBUG]: Server " + ID + " is the last running server - no need for handshake ");
         }
     }
 
