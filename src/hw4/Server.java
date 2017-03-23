@@ -28,6 +28,7 @@ public class Server {
     private int numAcks = 0;
     private int ID;
     private int numServers;
+    private boolean lastServer = false;
 
     public static final String TAG = "serv";
     public static final boolean FROM_CONIFIG_FILE = true;
@@ -77,6 +78,8 @@ public class Server {
 
             thisServer = new Server(numServer, myID);
         }
+
+        if (thisServer.numServers < 2) { thisServer.lastServer = true; }
 
         threadPool = Executors.newCachedThreadPool();
 
@@ -359,10 +362,17 @@ public class Server {
      */
     public void notifyServers(String type, int id, int clock, String command) {
         String message = TAG + " " + type + " " + Integer.toString(id) + " " + Integer.toString(clock) + " " + command;
+        Socket sock;
+
         for (Map.Entry<Integer, InetSocketAddress> entry : serverList.entrySet()) {
+            if (serverList.size() < 2) {
+                System.out.println("[DEBUG]: Only one server node is running");
+                lastServer = true;
+                return;
+            }
             if (entry.getKey() != this.ID) {
                 System.out.println("[DEBUG]: Attempting to connect to Server " + entry.getKey());
-                Socket sock = new Socket();
+                sock = new Socket();
                 try {
                     sock.connect(entry.getValue(), 100);
                     DataOutputStream outToServer = new DataOutputStream(sock.getOutputStream());
@@ -374,36 +384,48 @@ public class Server {
                 } catch (SocketTimeoutException e) {
                     System.err.println("Timed out while connecting to Server " + entry.getKey());
                     serverList.remove(entry.getKey());
+                    sock = new Socket();
                     e.printStackTrace();
                 } catch (IOException e) {
                     System.err.println("IOException while connecting to Server " + entry.getKey());
                     serverList.remove(entry.getKey());
+                    sock = new Socket();
                     e.printStackTrace();
                 }
             }
         }
+
+        System.out.println("[DEBUG]: Exited for loop in notifyServers");
+
+        // If this point is reached, then either all other servers have been notified,
+        // or the current server is the only one that is still running
+
     }
 
     public synchronized void sendRequest(String command) {
         notifyServers("request", this.ID, 0, command);
 
-        // Wait for acknowledgements
-        numAcks = 0;
-        System.out.println("[DEBUG]: CS Requested - numAcks = " + numAcks);
-        try {
-            while (numAcks < serverList.size() - 1) {
-                wait();
-                System.out.println("[DEBUG]: CS Requested - numAcks = " + numAcks);
+
+        // Wait for acknowledgements if not last server node
+        if (!lastServer) {
+            numAcks = 0;
+            System.out.println("[DEBUG]: CS Requested - numAcks = " + numAcks);
+            try {
+                while (numAcks < serverList.size() - 1) {
+                    wait();
+                    System.out.println("[DEBUG]: CS Requested - numAcks = " + numAcks);
+                }
+            } catch (InterruptedException e) {
+                e.printStackTrace();
             }
-        } catch (InterruptedException e) {
-            e.printStackTrace();
+        } else {
+            System.out.println("[DEBUG]: Server " + ID + " is the last running server");
         }
     }
 
     public synchronized String releaseAndGetResponse(String command) {
         notifyAll();
         notifyServers("release", this.ID, 0, command);
-
         return handleCommand(command);
     }
 
