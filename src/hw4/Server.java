@@ -363,48 +363,67 @@ public class Server {
     public void notifyServers(String type, int id, int clock, String command) {
         String message = TAG + " " + type + " " + Integer.toString(id) + " " + Integer.toString(clock) + " " + command;
         Socket sock;
+        DataOutputStream outToServer;
 
-        for (Map.Entry<Integer, InetSocketAddress> entry : serverList.entrySet()) {
+        for (int i = 1; i <= numServers; i++) {
             if (serverList.size() < 2) {
                 System.out.println("[DEBUG]: Only one server node is running");
                 lastServer = true;
-                return;
             }
-            if (entry.getKey() != this.ID) {
-                System.out.println("[DEBUG]: Attempting to connect to Server " + entry.getKey());
-                sock = new Socket();
-                try {
-                    sock.connect(entry.getValue(), 100);
-                    DataOutputStream outToServer = new DataOutputStream(sock.getOutputStream());
 
+            if (i != this.ID && serverList.containsKey(i)) {
+                System.out.println("[DEBUG]: Attempting to connect to Server " + i);
+                InetSocketAddress addr = serverList.get(i);
+                sock = new Socket();
+
+                try {
+                    sock.connect(addr, 100);
+                    outToServer = new DataOutputStream(sock.getOutputStream());
                     outToServer.writeUTF(message);
                     outToServer.flush();
-
-                    System.out.println("[DEBUG]: Sent message \"" + message + "\" to Server " + entry.getKey());
-                } catch (SocketTimeoutException e) {
-                    System.err.println("Timed out while connecting to Server " + entry.getKey());
-                    serverList.remove(entry.getKey());
-                    sock = new Socket();
-                    e.printStackTrace();
+                    outToServer.close();
                 } catch (IOException e) {
-                    System.err.println("IOException while connecting to Server " + entry.getKey());
-                    serverList.remove(entry.getKey());
-                    sock = new Socket();
-                    e.printStackTrace();
+                    System.err.println("IOException in Server.notifyServers:");
+                    System.err.println("Unable to connect to Server " + i + "\n");
+                    serverList.remove(i);
                 }
             }
         }
 
-        System.out.println("[DEBUG]: Exited for loop in notifyServers");
-
-        // If this point is reached, then either all other servers have been notified,
-        // or the current server is the only one that is still running
-
+//        for (Map.Entry<Integer, InetSocketAddress> entry : serverList.entrySet()) {
+//            if (serverList.size() < 2) {
+//                System.out.println("[DEBUG]: Only one server node is running");
+//                lastServer = true;
+//                return;
+//            }
+//            if (entry.getKey() != this.ID) {
+//                System.out.println("[DEBUG]: Attempting to connect to Server " + entry.getKey());
+//                sock = new Socket();
+//                try {
+//                    sock.connect(entry.getValue(), 100);
+//                    DataOutputStream outToServer = new DataOutputStream(sock.getOutputStream());
+//
+//                    outToServer.writeUTF(message);
+//                    outToServer.flush();
+//
+//                    System.out.println("[DEBUG]: Sent message \"" + message + "\" to Server " + entry.getKey());
+//                } catch (SocketTimeoutException e) {
+//                    System.err.println("Timed out while connecting to Server " + entry.getKey());
+//                    serverList.remove(entry.getKey());
+//                    sock = new Socket();
+//                    e.printStackTrace();
+//                } catch (IOException e) {
+//                    System.err.println("IOException while connecting to Server " + entry.getKey());
+//                    serverList.remove(entry.getKey());
+//                    sock = new Socket();
+//                    e.printStackTrace();
+//                }
+//            }
+//        }
     }
 
     public synchronized void sendRequest(String command) {
         notifyServers("request", this.ID, 0, command);
-
 
         // Wait for acknowledgements if not last server node
         if (!lastServer) {
