@@ -16,7 +16,6 @@ public class Server {
     private static HashMap<String, Integer> inventory;
     private static AtomicInteger orderCount = new AtomicInteger(1); // Order IDs count up from 1
     private static ArrayList<Order> orderHistory = new ArrayList<Order>();
-    private static ExecutorService threadPool = null;
 
     // Stuff added for HW 4
     private static HashMap<Integer, InetSocketAddress> serverList;
@@ -84,7 +83,7 @@ public class Server {
 
         if (thisServer.numServers < 2) { thisServer.lastServer = true; }
 
-        threadPool = Executors.newCachedThreadPool();
+        ExecutorService threadPool = Executors.newCachedThreadPool();
 
         try {
             ServerSocket serverSocket = new ServerSocket(serverList.get(thisServer.ID).getPort());
@@ -172,6 +171,12 @@ public class Server {
         }
     }
 
+    /**
+     * Initializes the server with parameters stored in a text file
+     * Used for debugging - to be removed if initializing via console
+     * @param fileName      Name of config file to be used
+     * @param server        Server object to be initialized
+     */
     private static synchronized void initiliazeServerParams(String fileName, Server server) {
         System.out.println("Initializing server from config file " + fileName);
         try {
@@ -353,9 +358,6 @@ public class Server {
     }
 
 
-    // NEW FOR HW4
-    // TODO: implement logical clock
-
     /**
      * Sends a message to all running servers
      * Message sent has form: "serv <type> <id> <command>"
@@ -425,6 +427,11 @@ public class Server {
     }
 
     // TODO: VERIFY WHEN THE CLOCK SHOULD BE INCREMENTED
+
+    /**
+     * Requests access to the resources shared by server nodes
+     * @param command   Command received from client node
+     */
     public synchronized void sendRequest(String command) {
         notifyServers("request", this.ID, clock.getClock(), command);
         queue.add(new TimeStamp(this.ID, clock.getClock(), command));
@@ -447,6 +454,12 @@ public class Server {
         }
     }
 
+    /**
+     * Called after a server node has gotten access to resources shared by
+     * all server nodes
+     * @param command   Command to be executed by server
+     * @return          Response from server to be sent to client
+     */
     public synchronized String releaseAndGetResponse(String command) {
         notifyAll();
         Iterator<TimeStamp> iterator = queue.iterator();
@@ -456,6 +469,10 @@ public class Server {
         return handleCommand(command);
     }
 
+    /**
+     * Processes any commands received from other server nodes
+     * @param command   Has form: "<type> <pid> <clock> <command>"
+     */
     public synchronized void processCommandFromServerNode(String command) {
         // First need to remove parameter tokens from command string
         String[] tokens = command.split(" ");
@@ -473,7 +490,7 @@ public class Server {
         if (tokens[0].equals("request")) {
             queue.add(new TimeStamp(senderID, senderClock, parsedCommand));
             notifyServers("acknowledge", this.ID, clock.getClock(), parsedCommand);
-            clock.tick(); //TODO: CHECK WHETHER THIS IS NECESSARY
+            clock.tick();
         }
 
         else if (tokens[0].equals("acknowledge")) {
