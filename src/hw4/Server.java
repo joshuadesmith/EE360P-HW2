@@ -27,46 +27,61 @@ public class Server {
     private static boolean[] serverStatus;
     private int numAcks = 0;
     private int ID;
+    private int numServers;
 
     public static final String TAG = "serv";
+    public static final boolean FROM_CONIFIG_FILE = true;
 
-    public Server(int serversRunning, int ID) {
+    public Server() {}
+
+    public Server(int numServers, int ID) {
+        this.numServers = numServers;
         this.ID = ID;
     }
 
     public static void main (String[] args) {
 
-        Scanner sc = new Scanner(System.in);
-        int myID = sc.nextInt();
-        int numServer = sc.nextInt();
-        String inventoryPath = sc.next();
-        sc.nextLine();
-
-        System.out.println("[DEBUG] my id: " + myID);
-        System.out.println("[DEBUG] numServer: " + numServer);
-        System.out.println("[DEBUG] inventory path: " + inventoryPath);
-
+        Server thisServer;
         serverList = new HashMap<Integer, InetSocketAddress>();
-        serverStatus = new boolean[numServer];
 
-        for (int i = 0; i < numServer; i++) {
-            String[] str = sc.nextLine().trim().split(":");
-            System.out.println("address for server " + i + ": " + str[0]);
-            serverList.put(i + 1, new InetSocketAddress(str[0], Integer.parseInt(str[1])));
-            serverStatus[i] = true;
+        if (FROM_CONIFIG_FILE) {
+            System.out.println("Enter config file name:");
+            Scanner sc = new Scanner(System.in);
+            String fileName = sc.nextLine().trim();
+            thisServer = new Server();
+
+            initiliazeServerParams(fileName, thisServer);
+        } else {
+            Scanner sc = new Scanner(System.in);
+            int myID = sc.nextInt();
+            int numServer = sc.nextInt();
+            String inventoryPath = sc.next();
+            sc.nextLine();
+
+            System.out.println("[DEBUG] my id: " + myID);
+            System.out.println("[DEBUG] numServer: " + numServer);
+            System.out.println("[DEBUG] inventory path: " + inventoryPath);
+
+            for (int i = 0; i < numServer; i++) {
+                String[] str = sc.nextLine().trim().split(":");
+                System.out.println("Address for server " + i + ": " + str[0] + " (Port " + str[1] + ")");
+                serverList.put(i + 1, new InetSocketAddress(str[0], Integer.parseInt(str[1])));
+                serverStatus[i] = true;
+            }
+
+            // parse the inventory file
+            initializeInventory(inventoryPath);
+
+            // for debugging
+            printInventory();
+
+            thisServer = new Server(numServer, myID);
         }
 
-        // parse the inventory file
-        initializeInventory(inventoryPath);
-
-        // for debugging
-        printInventory();
-
-        Server thisServer = new Server(numServer, myID);
         threadPool = Executors.newCachedThreadPool();
 
         try {
-            ServerSocket serverSocket = new ServerSocket(serverList.get(myID).getPort());
+            ServerSocket serverSocket = new ServerSocket(serverList.get(thisServer.ID).getPort());
 
             Socket s = null;
             while ((s = serverSocket.accept()) != null) {
@@ -84,25 +99,26 @@ public class Server {
      * @param command   Command string received from client
      * @return          String that contains the server's response
      */
-    synchronized String handleCommand(String command) {
+    private String handleCommand(String command) {
+        System.out.println("[DEBUG]: Handling command: " + command);
         String[] tokens = command.trim().split(" ");
 
         String response = null;
 
 
-        if (tokens[1].toLowerCase().equals("purchase")) {
-            response = processPurchase(new Order(tokens[2], tokens[3], Integer.parseInt(tokens[4])));
+        if (tokens[0].toLowerCase().equals("purchase")) {
+            response = processPurchase(new Order(tokens[1], tokens[2], Integer.parseInt(tokens[3])));
         }
 
-        else if (tokens[1].toLowerCase().equals("cancel")) {
-            response = cancelOrder(Integer.parseInt(tokens[2]));
+        else if (tokens[0].toLowerCase().equals("cancel")) {
+            response = cancelOrder(Integer.parseInt(tokens[1]));
         }
 
-        else if (tokens[1].toLowerCase().equals("search")) {
-            response = searchOrders(tokens[2]);
+        else if (tokens[0].toLowerCase().equals("search")) {
+            response = searchOrders(tokens[1]);
         }
 
-        else if (tokens[1].toLowerCase().equals("list")) {
+        else if (tokens[0].toLowerCase().equals("list")) {
             response = listInventory();
         }
 
@@ -110,6 +126,7 @@ public class Server {
             response = "Invalid Command: " + command;
         }
 
+        System.out.println("[DEBUG]: Executed command \"" + command + "\"");
         return response;
     }
 
@@ -150,6 +167,34 @@ public class Server {
         }
     }
 
+    private static synchronized void initiliazeServerParams(String fileName, Server server) {
+        System.out.println("Initializing server from config file " + fileName);
+        try {
+            BufferedReader reader = new BufferedReader(new FileReader(fileName));
+
+            String firstLine = reader.readLine();
+            String[] firstLineTokens = firstLine.trim().split(" ");
+            server.ID = Integer.parseInt(firstLineTokens[0]);
+            server.numServers = Integer.parseInt(firstLineTokens[1]);
+
+            for (int i = 0; i < server.numServers; i++) {
+                String[] str = reader.readLine().trim().split(":");
+                System.out.println("Address for server " + i + ": " + str[0] + " (Port " + str[1] + ")");
+                serverList.put(i + 1, new InetSocketAddress(str[0], Integer.parseInt(str[1])));
+            }
+
+            initializeInventory(firstLineTokens[2]);
+            printInventory();
+
+        } catch (FileNotFoundException e) {
+            System.err.println("File not found");
+            e.printStackTrace();
+        } catch (IOException e) {
+            System.err.println("IOException while reading file");
+            e.printStackTrace();
+        }
+    }
+
     /**
      * Prints the current inventory contents to the Server's console
      * FOR DEBUGGING
@@ -170,7 +215,7 @@ public class Server {
      * @param quantity  Number of units of the product
      * @return          The resulting Order object
      */
-    private synchronized Order generateOrder(String user, String product, int quantity) {
+    private Order generateOrder(String user, String product, int quantity) {
         return new Order(user, product, quantity);
     }
 
@@ -179,7 +224,7 @@ public class Server {
      * @param order     Order information to be processed
      * @return          Result of order processing.
      */
-    private synchronized String processPurchase(Order order) {
+    private String processPurchase(Order order) {
 
         if (!inventory.containsKey(order.getProduct())) {
             return "Not Available - We do not sell this product.\n";
@@ -205,7 +250,7 @@ public class Server {
      * @param id        ID of order to be cancelled
      * @return          Response to be sent back to client
      */
-    private synchronized String cancelOrder(int id) {
+    private String cancelOrder(int id) {
         Order order = getOrderByID(id);
 
         if (order == null) {
@@ -226,7 +271,7 @@ public class Server {
      * @param user      Username used to search orders
      * @return          Response to be sent back to client
      */
-    private synchronized String searchOrders(String user) {
+    private String searchOrders(String user) {
         StringBuilder builder = new StringBuilder();
         ArrayList<Order> userOrders = queryOrdersByUser(user);
 
@@ -247,7 +292,7 @@ public class Server {
      * Lists the current inventory of the store
      * @return          A string containing all store inventory
      */
-    private synchronized String listInventory() {
+    private String listInventory() {
         ArrayList<String> invList = new ArrayList<String>(0);
         StringBuilder builder = new StringBuilder();
         String list = null;
@@ -272,7 +317,7 @@ public class Server {
      * @param user      Name of the user
      * @return          ArrayList of all the orders that the user made
      */
-    private synchronized ArrayList<Order> queryOrdersByUser(String user) {
+    private ArrayList<Order> queryOrdersByUser(String user) {
         ArrayList<Order> userOrders = new ArrayList<Order>(0);
 
         for (Order order : orderHistory) {
@@ -290,7 +335,7 @@ public class Server {
      * @return          Order object associated with ID
      *                  Null if no order found
      */
-    private synchronized Order getOrderByID(int id) {
+    private Order getOrderByID(int id) {
         Order result = null;
 
         for (Order order : orderHistory) {
@@ -316,6 +361,7 @@ public class Server {
         String message = TAG + " " + type + " " + Integer.toString(id) + " " + Integer.toString(clock) + " " + command;
         for (Map.Entry<Integer, InetSocketAddress> entry : serverList.entrySet()) {
             if (entry.getKey() != this.ID) {
+                System.out.println("[DEBUG]: Attempting to connect to Server " + entry.getKey());
                 Socket sock = new Socket();
                 try {
                     sock.connect(entry.getValue(), 100);
@@ -323,9 +369,15 @@ public class Server {
 
                     outToServer.writeUTF(message);
                     outToServer.flush();
+
+                    System.out.println("[DEBUG]: Sent message \"" + message + "\" to Server " + entry.getKey());
                 } catch (SocketTimeoutException e) {
+                    System.err.println("Timed out while connecting to Server " + entry.getKey());
+                    serverList.remove(entry.getKey());
                     e.printStackTrace();
                 } catch (IOException e) {
+                    System.err.println("IOException while connecting to Server " + entry.getKey());
+                    serverList.remove(entry.getKey());
                     e.printStackTrace();
                 }
             }
@@ -337,9 +389,11 @@ public class Server {
 
         // Wait for acknowledgements
         numAcks = 0;
+        System.out.println("[DEBUG]: CS Requested - numAcks = " + numAcks);
         try {
             while (numAcks < serverList.size() - 1) {
                 wait();
+                System.out.println("[DEBUG]: CS Requested - numAcks = " + numAcks);
             }
         } catch (InterruptedException e) {
             e.printStackTrace();
@@ -347,22 +401,23 @@ public class Server {
     }
 
     public synchronized String releaseAndGetResponse(String command) {
-        String response = handleCommand(command);
-        notifyServers("release", this.ID, 0, command);
         notifyAll();
+        notifyServers("release", this.ID, 0, command);
 
-        return response;
+        return handleCommand(command);
     }
 
     public synchronized void processCommandFromServerNode(String command) {
+        // First need to remove parameter tokens from command string
         String[] tokens = command.split(" ");
         StringBuilder builder = new StringBuilder();
-        for (int i = 4; i < tokens.length; i++) {
+        for (int i = 3; i < tokens.length; i++) {
             builder.append(tokens[i]);
+            builder.append(" ");
         }
 
         if (tokens[0].equals("request")) {
-            notifyServers("acknowledge", this.ID, 0, builder.toString());
+            notifyServers("acknowledge", this.ID, 0, builder.toString().trim());
         }
 
         else if (tokens[0].equals("acknowledge")) {
@@ -370,7 +425,7 @@ public class Server {
         }
 
         else if (tokens[0].equals("release")) {
-            handleCommand(builder.toString());
+            handleCommand(builder.toString().trim());
         }
 
         notifyAll();

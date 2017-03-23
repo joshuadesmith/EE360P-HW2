@@ -26,7 +26,7 @@ public class ServerCommandInterpreter implements Runnable {
             String command = din.readUTF();
             String source = command.toLowerCase().trim().split(" ")[0];
             String body = command.substring(command.indexOf(" ") + 1);
-            System.out.println("Received command: " + command);
+            System.out.println("[DEBUG]: Received command: \"" + command + "\"");
 
             interpretCommand(command);
 
@@ -51,6 +51,7 @@ public class ServerCommandInterpreter implements Runnable {
         if (source.equals(Client.TAG)) {
             server.sendRequest(body);
             response = server.releaseAndGetResponse(body);
+            System.out.println("[DEBUG]: Response to be sent to client: \"" + response + "\"");
             try {
                 DataOutputStream dout = new DataOutputStream(inSocket.getOutputStream());
                 dout.writeUTF(response);
