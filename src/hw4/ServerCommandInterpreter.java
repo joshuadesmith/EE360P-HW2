@@ -47,7 +47,6 @@ public class ServerCommandInterpreter implements Runnable {
         String body = command.substring(command.indexOf(" ") + 1);
         String response = null;
 
-        //TODO: if source == client, call server.handleClientCommand
         if (source.equals(Client.TAG)) {
             server.sendRequest(body);
             response = server.releaseAndGetResponse(body);
@@ -61,7 +60,6 @@ public class ServerCommandInterpreter implements Runnable {
             }
         }
 
-        //TODO: if source == server, call server.handleServerCommand
         else if (source.equals(Server.TAG)) {
             server.processCommandFromServerNode(body);
         }

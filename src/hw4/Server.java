@@ -12,25 +12,34 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class Server {
 
+    // Stuff to keep track of Orders and inventory
     private static HashMap<String, Integer> inventory;
     private static AtomicInteger orderCount = new AtomicInteger(1); // Order IDs count up from 1
     private static ArrayList<Order> orderHistory = new ArrayList<Order>();
-    private static ServerSocket tcpSocket = null;
     private static ExecutorService threadPool = null;
 
+    // Stuff added for HW 4
     private static HashMap<Integer, InetSocketAddress> serverList;
-    private static boolean[] serverStatus;
     private int numAcks = 0;
     private int ID;
     private int numServers;
     private boolean lastServer = false;
 
+    // Stuff for mutual exclusion
+    private Clock clock;
+    private PriorityQueue<TimeStamp> queue;
+
     public static final String TAG = "serv";
     public static final boolean FROM_CONIFIG_FILE = true;
 
-    public Server() {}
+    public Server() {
+        this.clock = new Clock();
+        this.queue = new PriorityQueue<TimeStamp>();
+    }
 
     public Server(int numServers, int ID) {
+        this.clock = new Clock();
+        this.queue = new PriorityQueue<TimeStamp>();
         this.numServers = numServers;
         this.ID = ID;
     }
@@ -62,7 +71,6 @@ public class Server {
                 String[] str = sc.nextLine().trim().split(":");
                 System.out.println("Address for server " + i + ": " + str[0] + " (Port " + str[1] + ")");
                 serverList.put(i + 1, new InetSocketAddress(str[0], Integer.parseInt(str[1])));
-                serverStatus[i] = true;
             }
 
             // parse the inventory file
@@ -416,15 +424,18 @@ public class Server {
 //        }
     }
 
+    // TODO: VERIFY WHEN THE CLOCK SHOULD BE INCREMENTED
     public synchronized void sendRequest(String command) {
-        notifyServers("request", this.ID, 0, command);
+        notifyServers("request", this.ID, clock.getClock(), command);
+        queue.add(new TimeStamp(this.ID, clock.getClock(), command));
+        clock.tick();
 
         // Wait for acknowledgements if not last server node
         if (!lastServer) {
             numAcks = 0;
             System.out.println("[DEBUG]: CS Requested - numAcks = " + numAcks);
             try {
-                while (numAcks < serverList.size() - 1) {
+                while (numAcks < serverList.size() - 1 || queue.peek().pid != this.ID) {
                     wait();
                     System.out.println("[DEBUG]: CS Requested - numAcks = " + numAcks);
                 }
@@ -438,7 +449,10 @@ public class Server {
 
     public synchronized String releaseAndGetResponse(String command) {
         notifyAll();
-        notifyServers("release", this.ID, 0, command);
+        Iterator<TimeStamp> iterator = queue.iterator();
+        TimeStamp stamp = queue.poll();
+        notifyServers("release", this.ID, clock.getClock(), stamp.message);
+        clock.tick();
         return handleCommand(command);
     }
 
@@ -451,8 +465,15 @@ public class Server {
             builder.append(" ");
         }
 
+        int senderID = Integer.parseInt(tokens[1]);
+        int senderClock = Integer.parseInt(tokens[2]);
+        String parsedCommand = builder.toString().trim();
+        clock.compareAndUpdate(senderClock);
+
         if (tokens[0].equals("request")) {
-            notifyServers("acknowledge", this.ID, 0, builder.toString().trim());
+            queue.add(new TimeStamp(senderID, senderClock, parsedCommand));
+            notifyServers("acknowledge", this.ID, clock.getClock(), parsedCommand);
+            clock.tick(); //TODO: CHECK WHETHER THIS IS NECESSARY
         }
 
         else if (tokens[0].equals("acknowledge")) {
@@ -460,7 +481,15 @@ public class Server {
         }
 
         else if (tokens[0].equals("release")) {
-            handleCommand(builder.toString().trim());
+            Iterator<TimeStamp> iterator = queue.iterator();
+            TimeStamp stamp = null;
+            while (iterator.hasNext()) {
+                stamp = iterator.next();
+                if (stamp.pid == senderID) {
+                    handleCommand(stamp.message);
+                    iterator.remove();
+                }
+            }
         }
 
         notifyAll();
