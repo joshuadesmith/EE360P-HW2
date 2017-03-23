@@ -12,11 +12,6 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class Server {
 
-    // TODO: Implement timestamps
-    // TODO: Implement lamport request
-    // TODO: Implement lamport release
-    // TODO: Use lamport's mutex to phase out synchronized methods
-
     private static HashMap<String, Integer> inventory;
     private static AtomicInteger orderCount = new AtomicInteger(1); // Order IDs count up from 1
     private static ArrayList<Order> orderHistory = new ArrayList<Order>();
@@ -388,6 +383,7 @@ public class Server {
             }
         }
 
+        // Old implementation - had issues with getting caught in an infinite loop
 //        for (Map.Entry<Integer, InetSocketAddress> entry : serverList.entrySet()) {
 //            if (serverList.size() < 2) {
 //                System.out.println("[DEBUG]: Only one server node is running");
