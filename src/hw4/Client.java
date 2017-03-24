@@ -16,6 +16,8 @@ public class Client {
     private boolean connected = false;
 
     public static final String TAG = "cli";
+    private static final boolean FROM_CONFIG_FILE = false;
+    private static final boolean DEBUG = false;
 
     public static void main (String[] args) {
 
@@ -23,7 +25,7 @@ public class Client {
         int numServer;
         Scanner sc = new Scanner(System.in);
 
-        if (Server.FROM_CONIFIG_FILE) {
+        if (FROM_CONFIG_FILE) {
             System.out.println("Enter client configuration file:");
             String configFileName = sc.nextLine().trim();
             servers = initializeClientParams(configFileName);
@@ -49,25 +51,25 @@ public class Client {
             if (tokens[0].equals("purchase")) {
                 String command = TAG + " " + tokens[0] + " " + tokens[1] + " " + tokens[2] + " " + tokens[3];
                 response = client.issueCommand(command, servers, numServer);
-                System.out.println("Response received: \n" + response);
+                System.out.println(response);
             }
 
             else if (tokens[0].equals("cancel")) {
                 String command = TAG + " " + tokens[0] + " " + tokens[1];
                 response = client.issueCommand(command, servers, numServer);
-                System.out.println("Response received: \n" + response);
+                System.out.println(response);
             }
 
             else if (tokens[0].equals("search")) {
                 String command = TAG + " " + tokens[0] + " " + tokens[1];
                 response = client.issueCommand(command, servers, numServer);
-                System.out.println("Response received: \n" + response);
+                System.out.println(response);
             }
 
             else if (tokens[0].equals("list")) {
                 String command = TAG + " " + tokens[0];
                 response = client.issueCommand(command, servers, numServer);
-                System.out.println("Response received: \n" + response);
+                System.out.println(response);
             }
 
             else {
@@ -82,23 +84,29 @@ public class Client {
         try {
             BufferedReader reader = new BufferedReader(new FileReader(fileName));
             int n = Integer.parseInt(reader.readLine().trim());
-            System.out.println(n + " Servers::");
+
+            if (DEBUG) System.out.println(n + " Servers::");
+
             result = new InetSocketAddress[n];
 
             for (int i = 0; i < n; i++) {
                 String[] str = reader.readLine().trim().split(":");
-                System.out.println("Server " + (i+1) + ": " + str[0] + "(Port " + str[1] + ")");
+                if (DEBUG) System.out.println("Server " + (i+1) + ": " + str[0] + "(Port " + str[1] + ")");
                 result[i] = new InetSocketAddress(str[0], Integer.parseInt(str[1]));
             }
 
             System.out.println("");
             return result;
         } catch (FileNotFoundException e) {
-            System.err.println("File not found:");
-            e.printStackTrace();
+            if (DEBUG) {
+                System.err.println("File not found:");
+                e.printStackTrace();
+            }
         } catch (IOException e) {
-            System.err.println("IOException while reading file:");
-            e.printStackTrace();
+            if (DEBUG) {
+                System.err.println("IOException while reading file:");
+                e.printStackTrace();
+            }
         }
 
         return null;
@@ -119,7 +127,7 @@ public class Client {
             if (connected) {
 
                 outToServer.writeUTF(command);
-                System.out.println("Issued Command: " + command);
+                if (DEBUG) System.out.println("Issued Command: " + command);
                 outToServer.flush();
 
                 response = inFromServer.readUTF();
@@ -127,8 +135,10 @@ public class Client {
             }
 
         } catch (IOException e) {
-            System.err.println("IOException in Client.issueCommand: ");
-            System.err.println("Could not connect to Server " + currentServIndex);
+            if (DEBUG) {
+                System.err.println("IOException in Client.issueCommand: ");
+                System.err.println("Could not connect to Server " + currentServIndex);
+            }
         }
 
         return response;
@@ -143,11 +153,12 @@ public class Client {
         connected = false;
 
         if (currentServIndex >= numServers) {
-            System.err.println("All servers are currently down.");
+            if (DEBUG) System.err.println("All servers are currently down.");
         } else {
             InetSocketAddress currentServer;
             for (int i = currentServIndex; i < numServers; i++) {
-                System.out.println("[DEBUG]: Attempting to connect to server " + i);
+                if (DEBUG) System.out.println("[DEBUG]: Attempting to connect to server " + i);
+
                 tcpSocket = new Socket();
                 currentServer = servers[i];
                 try {
@@ -160,12 +171,16 @@ public class Client {
                     currentServIndex = i;
                     return;
                 } catch (SocketTimeoutException e) {
-                    System.err.println("SocketTimeoutException in Client.setUpTCPSocket finding server:");
-                    System.err.println("Could not connect to Server " + i);
+                    if (DEBUG) {
+                        System.err.println("SocketTimeoutException in Client.setUpTCPSocket finding server:");
+                        System.err.println("Could not connect to Server " + i);
+                    }
                     connected = false;
                 } catch (IOException e) {
-                    System.err.println("IOException in Client.setUpTCPSocket finding server:");
-                    System.err.println("Could not connect to Server " + i);
+                    if (DEBUG) {
+                        System.err.println("IOException in Client.setUpTCPSocket finding server:");
+                        System.err.println("Could not connect to Server " + i);
+                    }
                     connected = false;
                 }
             }

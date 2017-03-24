@@ -29,7 +29,8 @@ public class Server {
     private PriorityQueue<TimeStamp> queue;
 
     public static final String TAG = "serv";
-    public static final boolean FROM_CONIFIG_FILE = true;
+    private static final boolean FROM_CONFIG_FILE = false;
+    private static final boolean DEBUG = false;
 
     public Server() {
         this.clock = new Clock();
@@ -48,7 +49,7 @@ public class Server {
         Server thisServer;
         serverList = new HashMap<Integer, InetSocketAddress>();
 
-        if (FROM_CONIFIG_FILE) {
+        if (FROM_CONFIG_FILE) {
             System.out.println("Enter config file name:");
             Scanner sc = new Scanner(System.in);
             String fileName = sc.nextLine().trim();
@@ -68,7 +69,7 @@ public class Server {
 
             for (int i = 0; i < numServer; i++) {
                 String[] str = sc.nextLine().trim().split(":");
-                System.out.println("Address for server " + i + ": " + str[0] + " (Port " + str[1] + ")");
+                System.out.println("address for server " + (i+1) + ": " + str[0] + ":" + str[1]);
                 serverList.put(i + 1, new InetSocketAddress(str[0], Integer.parseInt(str[1])));
             }
 
@@ -76,7 +77,7 @@ public class Server {
             initializeInventory(inventoryPath);
 
             // for debugging
-            printInventory();
+            if (DEBUG) printInventory();
 
             thisServer = new Server(numServer, myID);
         }
@@ -92,7 +93,7 @@ public class Server {
             while ((s = serverSocket.accept()) != null) {
                 threadPool.submit(new ServerCommandInterpreter(thisServer, s));
             }
-            System.out.println("TCP Server Runnable ending.");
+            if (DEBUG) { System.out.println("TCP Server Runnable ending."); }
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -130,7 +131,7 @@ public class Server {
             response = "Invalid Command: " + command;
         }
 
-        System.out.println("[DEBUG]: Executed command \"" + command + "\"\n");
+        if (DEBUG) { System.out.println("[DEBUG]: Executed command \"" + command + "\"\n"); }
         return response;
     }
 
@@ -157,10 +158,10 @@ public class Server {
                 }
             }
             // For debugging
-            System.out.println("Finished initializing inventory.");
+            if (DEBUG) System.out.println("Finished initializing inventory.");
 
             if (inventory.size() == 0) {
-                System.out.println("Warning: Inventory is empty");
+                if (DEBUG) System.out.println("Warning: Inventory is empty");
             }
             reader.close();
         } catch (FileNotFoundException e) {
@@ -178,7 +179,7 @@ public class Server {
      * @param server        Server object to be initialized
      */
     private static synchronized void initiliazeServerParams(String fileName, Server server) {
-        System.out.println("Initializing server from config file " + fileName);
+        if (DEBUG) System.out.println("Initializing server from config file " + fileName);
         try {
             BufferedReader reader = new BufferedReader(new FileReader(fileName));
 
@@ -237,13 +238,13 @@ public class Server {
     private String processPurchase(Order order) {
 
         if (!inventory.containsKey(order.getProduct())) {
-            return "Not Available - We do not sell this product.\n";
+            return "Not Available - We do not sell this product";
         }
 
         // Inventory contains the requested product
         int currentQuant = inventory.get(order.getProduct());
         if (currentQuant < order.getQuantity()) {
-            return "Not Available - Not enough items.\n";
+            return "Not Available - Not enough items";
         }
 
         // Inventory has enough stock of requested product
@@ -251,7 +252,7 @@ public class Server {
         inventory.put(order.getProduct(), currentQuant - order.getQuantity());
         orderHistory.add(order);
         orderCount.incrementAndGet();
-        return "Your order has been placed " + order.toString() + "\n";
+        return "Your order has been placed, " + order.toString();
     }
 
     /**
@@ -264,7 +265,7 @@ public class Server {
         Order order = getOrderByID(id);
 
         if (order == null) {
-            return Integer.toString(id) + " not found, no such order\n";
+            return Integer.toString(id) + " not found, no such order";
         }
 
         // Order with id exists
@@ -273,7 +274,7 @@ public class Server {
         currentQuant += order.getQuantity();
         inventory.put(order.getProduct(), currentQuant);
         orderHistory.remove(order);
-        return "Order " + id + " has been cancelled.\n";
+        return "Order " + id + " is cancelled";
     }
 
     /**
@@ -286,7 +287,7 @@ public class Server {
         ArrayList<Order> userOrders = queryOrdersByUser(user);
 
         if (userOrders.size() == 0) {
-            builder.append("No order found for " + user + "\n");
+            builder.append("No order found for " + user);
         } else {
             for (Order order : userOrders) {
                 builder.append(order.toStringNameless());
@@ -315,7 +316,7 @@ public class Server {
         }
 
         if (inventory.isEmpty()) {
-            builder.append("The store is empty.\n");
+            builder.append("The store is empty");
         }
 
         //builder.append("\n");
@@ -375,7 +376,7 @@ public class Server {
             lastServer = (serverList.size() < 2);
 
             if (i != this.ID && serverList.containsKey(i)) {
-                System.out.println("[DEBUG]: Attempting to connect to Server " + i);
+                if (DEBUG) System.out.println("[DEBUG]: Attempting to connect to Server " + i);
                 InetSocketAddress addr = serverList.get(i);
                 sock = new Socket();
 
@@ -386,8 +387,10 @@ public class Server {
                     outToServer.flush();
                     outToServer.close();
                 } catch (IOException e) {
-                    System.err.println("IOException in Server.notifyServers:");
-                    System.err.println("Unable to connect to Server " + i + "\n");
+                    if (DEBUG) {
+                        System.err.println("IOException in Server.notifyServers:");
+                        System.err.println("Unable to connect to Server " + i + "\n");
+                    }
                     serverList.remove(i);
                 }
             }
@@ -426,6 +429,30 @@ public class Server {
 //        }
     }
 
+    public void acknowledgeRequest(int id, int clock, String command) {
+        String message = TAG + " " + "acknowledge" + " " + this.ID + " " + this.clock.getClock() + " " + command;
+        Socket sock;
+        DataOutputStream dout;
+        lastServer = (serverList.size() < 2);
+
+        if (serverList.containsKey(id)) {
+            try {
+                InetSocketAddress addr = serverList.get(id);
+                sock = new Socket();
+                sock.connect(addr, 100);
+                dout = new DataOutputStream(sock.getOutputStream());
+                dout.writeUTF(message);
+                dout.flush();
+                dout.close();
+            } catch (IOException e) {
+                if (DEBUG) e.printStackTrace();
+                serverList.remove(id);
+            }
+        } else {
+            //TODO: Take over for crashed server
+        }
+    }
+
     // TODO: VERIFY WHEN THE CLOCK SHOULD BE INCREMENTED
 
     /**
@@ -440,17 +467,17 @@ public class Server {
         // Wait for acknowledgements if not last server node
         if (!lastServer) {
             numAcks = 0;
-            System.out.println("[DEBUG]: CS Requested - numAcks = " + numAcks);
+            if (DEBUG) System.out.println("[DEBUG]: CS Requested - numAcks = " + numAcks);
             try {
                 while (numAcks < serverList.size() - 1 || queue.peek().pid != this.ID) {
                     wait();
-                    System.out.println("[DEBUG]: CS Requested - numAcks = " + numAcks);
+                    if (DEBUG) System.out.println("[DEBUG]: CS Requested - numAcks = " + numAcks);
                 }
             } catch (InterruptedException e) {
-                e.printStackTrace();
+                if (DEBUG) e.printStackTrace();
             }
         } else {
-            System.out.println("[DEBUG]: Server " + ID + " is the last running server - no need for handshake ");
+            if (DEBUG) System.out.println("[DEBUG]: Server " + ID + " is the last running server - no need for handshake ");
         }
     }
 
@@ -466,7 +493,7 @@ public class Server {
         TimeStamp stamp = queue.poll();
         notifyServers("release", this.ID, clock.getClock(), stamp.message);
         clock.tick();
-        return handleCommand(command);
+        return handleCommand(stamp.message);
     }
 
     /**
@@ -489,7 +516,8 @@ public class Server {
 
         if (tokens[0].equals("request")) {
             queue.add(new TimeStamp(senderID, senderClock, parsedCommand));
-            notifyServers("acknowledge", this.ID, clock.getClock(), parsedCommand);
+            //notifyServers("acknowledge", this.ID, clock.getClock(), parsedCommand);
+            acknowledgeRequest(senderID, clock.getClock(), parsedCommand);
             clock.tick();
         }
 
