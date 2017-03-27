@@ -1,4 +1,4 @@
-package tcpExample;
+package tcpExamples;
 
 /**
  * Created by joshuasmith on 2/20/17.

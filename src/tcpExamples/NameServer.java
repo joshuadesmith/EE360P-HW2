@@ -1,4 +1,4 @@
-package tcpExample;
+package tcpExamples;
 
 import java.io.IOException;
 import java.net.ServerSocket;

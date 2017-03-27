@@ -1,4 +1,4 @@
-package tcpExample;
+package tcpExamples;
 
 import java.net.InetSocketAddress;
 import java.util.ArrayList;

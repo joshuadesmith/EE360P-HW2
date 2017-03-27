@@ -1,7 +1,6 @@
-package tcpExample;
+package tcpExamples;
 
 import java.io.IOException;
-import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.net.InetSocketAddress;
 import java.net.Socket;
