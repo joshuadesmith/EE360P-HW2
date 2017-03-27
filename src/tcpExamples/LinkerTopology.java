@@ -2,29 +2,37 @@ package tcpExamples;
 
 import java.io.FileNotFoundException;
 import java.io.FileReader;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.PriorityQueue;
-import java.util.Scanner;
+import java.util.*;
 
 /**
  * Created by joshuasmith on 3/27/17.
  */
 public class LinkerTopology {
 
-    private static final String fileName = "topology1.txt";
+    private static final String fileName = "topology_info.txt";
 
-    public static boolean readNeighbors(int myID, List<Integer> neighbors) {
+    public static boolean readNeighbors(HashMap<Integer, LinkedList<Integer>> neighbors) {
         System.out.println("Reading topology...");
 
         try {
             Scanner fileScanner = new Scanner(new FileReader(fileName));
 
-            while (fileScanner.hasNext()) {
-                neighbors.add(fileScanner.nextInt());
+            // Get total number of processes
+            int numProc = Integer.parseInt(fileScanner.nextLine());
+
+            // Get a list of neighbors for each process
+            for (int i = 1; i <= numProc; i++) {
+                String[] procs = fileScanner.nextLine().trim().split(" ");
+                LinkedList<Integer> procNeighbors = new LinkedList<Integer>();
+
+                for (String str : procs) {
+                    procNeighbors.add(Integer.parseInt(str));
+                }
+
+                neighbors.put(i, procNeighbors);
             }
 
-            System.out.println("Process " + myID + " has neighbors: " + neighbors.toString());
+            printNeighborLists(neighbors, numProc);
             return true;
 
         } catch (FileNotFoundException e) {
@@ -39,8 +47,20 @@ public class LinkerTopology {
         }
     }
 
+    public static void printNeighborLists(HashMap<Integer, LinkedList<Integer>> neighbors, int numProc) {
+        System.out.println(numProc + " processes::");
+        for (int i = 1; i <= numProc; i++) {
+            System.out.print("Neighbors of P" + i + ": ");
+            if (neighbors.containsKey(i)) {
+                System.out.print(neighbors.get(i).toString() + "\n");
+            } else {
+                System.out.print("*none*");
+            }
+        }
+    }
+
     public static void main(String[] args) {
-        LinkedList<Integer> list = new LinkedList<Integer>();
-        LinkerTopology.readNeighbors(Integer.parseInt(args[0]), list);
+        HashMap<Integer, LinkedList<Integer>> neighborLists = new HashMap<Integer, LinkedList<Integer>>();
+        LinkerTopology.readNeighbors(neighborLists);
     }
 }
