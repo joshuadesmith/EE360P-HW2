@@ -22,9 +22,9 @@ public class ReceiverTest {
         try {
             addr = InetAddress.getByName(hostname);
             udpp = new UDPplus(addr, port, numStored, packLen);
-            ArrayList<byte[]> rec = udpp.recieve();
-            for (byte[] barr : rec) {
-                System.out.println(barr);
+            ArrayList<byte[]> rec = null;
+            while (true) {
+                rec = udpp.recieve();
             }
         } catch (UnknownHostException e) {
             System.out.println("UknownHostException in main: " + e);
