@@ -1,5 +1,6 @@
 package ch3problems;
 
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -10,8 +11,11 @@ public class Multiroom {
     ReentrantLock lock = new ReentrantLock();
     Condition onlyOneRoom = lock.newCondition();
 
+    Semaphore waitLock = new Semaphore(1);
+
     boolean[] occupied;
     int numOccupants = 0;
+    boolean roomWaiting;
 
     public Multiroom(int numRooms) {
         this.occupied = new boolean[numRooms];
@@ -23,9 +27,11 @@ public class Multiroom {
 
         else {
             try {
+                waitLock.acquire();
                 while (!canJoin(room)) { onlyOneRoom.await(); }
                 if (!occupied[room]) occupied[room] = true;
                 numOccupants++;
+                waitLock.release();
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
